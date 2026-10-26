@@ -110,7 +110,7 @@ test("database access, atomic imports, notes, concurrency and history", async (t
     async () => {
       await assert.rejects(
         action(0, "open", "10000000-0000-4000-8000-000000000002"),
-        /Another coach updated/,
+        /Another team member updated/,
       );
       assert.equal(
         (await db.query("select * from outreach_events")).rows.length,

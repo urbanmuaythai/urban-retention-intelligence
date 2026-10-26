@@ -165,7 +165,7 @@ export function demoData() {
         body: "Spoke after class. Busy with shifts this week; check back on Thursday.",
         follow_up_on: addDays(weeks[0], 3),
         created_at: weeks[0] + "T01:20:00Z",
-        author: "Sam · Coach",
+        author: "Sam · Urban Team",
       },
       {
         id: "sample-2",
@@ -176,11 +176,11 @@ export function demoData() {
         suppress_through: weeks[1],
         body: "Reached out and agreed a return plan. Handled through next week; review afterwards.",
         created_at: weeks[0] + "T02:15:00Z",
-        author: "Alex · Coach",
+        author: "Alex · Urban Team",
       },
     ],
     staff: [
-      { id: "demo-coach", display_name: "You · Preview coach", role: "admin" },
+      { id: "demo-coach", display_name: "Urban Team · Preview", role: "admin" },
     ],
   };
 }

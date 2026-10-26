@@ -1,4 +1,4 @@
-# Urban Muaythai Coach Desk
+# Urban Muaythai Urban Member Care
 
 Staff outreach companion to the existing Retention Intelligence report. Vite + Supabase Auth, Postgres and Realtime. Deployable to Vercel or Netlify using the repository-root configuration files. The original public `index.html` is preserved and remains the separate report; coach notes are never embedded in that file.
 
@@ -31,7 +31,7 @@ Copy `.env.example` to `.env.local` and supply the project's public URL and publ
 
 ## Supabase setup
 
-1. Choose a Supabase project for Urban Muaythai. Apply `supabase/migrations/202610260001_coach_desk.sql` once through the SQL editor or your normal migration workflow. The migration creates only the Coach Desk's tables and functions; review names for conflicts in a shared project.
+1. Choose a Supabase project for Urban Muaythai. Apply `supabase/migrations/202610260001_coach_desk.sql` once through the SQL editor or your normal migration workflow. The migration creates only the Urban Member Care's tables and functions; review names for conflicts in a shared project.
 2. In Supabase Auth, disable public sign-ups and create/invite the required staff users. Configure the deployed site's Auth URL. The app uses email/password sign-in with password visibility, reset-request and recovery screens. Add the deployed origin and the recovery return URL (`https://YOUR-HOST/?flow=recovery`) to the Auth redirect allowlist. Reset-email delivery depends on the project email configuration and must be verified on the live project. Administrators create and approve accounts; public self-registration is not offered. An admin can set an initial password using the Auth dashboard. Sign-out clears the displayed workspace and private records from application memory; expired or unapproved sessions return to sign-in.
 3. Bootstrap the first administrator from the SQL editor, replacing the placeholders with an existing Auth user's UUID and name:
 
@@ -67,7 +67,7 @@ An administrator signs in, chooses **Import week**, selects the private export, 
 
 **Netlify alternative:** import the same repository with its root as the base directory. `netlify.toml` specifies the build and publish paths. Add the same two environment variables before building.
 
-The coach app has no client-side path router, so it does not need broad rewrite rules. Existing GitHub Pages continues to use the original root `index.html`. A Vercel or Netlify deployment of this branch serves Coach Desk as its main page. Point staff at the new URL; keep the report's existing GitHub Pages URL separate. Avoid uploading attendance or member files to hosting public folders.
+The coach app has no client-side path router, so it does not need broad rewrite rules. Existing GitHub Pages continues to use the original root `index.html`. A Vercel or Netlify deployment of this branch serves Urban Member Care as its main page. Point staff at the new URL; keep the report's existing GitHub Pages URL separate. Avoid uploading attendance or member files to hosting public folders.
 
 ## Verification
 
@@ -85,6 +85,6 @@ Inspected on 26 October 2026:
 - [Vandan-726/GymPro](https://github.com/Vandan-726/GymPro): React/Vite/Supabase gym management, Auth, RLS and attendance/admin features. A broader gym platform rather than this specific weekly outreach workflow.
 - [tharungit17/gym](https://github.com/tharungit17/gym): Supabase gym management with attendance and authenticated roles, also broader than this workflow.
 
-These were design references only. No external repository code or assets were copied. Coach Desk extends this repository and your report's existing rules.
+These were design references only. No external repository code or assets were copied. Urban Member Care extends this repository and your report's existing rules.
 
 Primary implementation references: [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Supabase Postgres Changes](https://supabase.com/docs/guides/realtime/postgres-changes), [Vite on Vercel](https://vercel.com/docs/frameworks/frontend/vite).

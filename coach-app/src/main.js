@@ -178,9 +178,9 @@ function render() {
   const progress = all.length ? Math.round((handled / all.length) * 100) : 0;
   const visible = filtered();
   $("#app").innerHTML = `<div class="workspace">
- <aside class="sidebar"><a class="brand" href="/" aria-label="Urban Muaythai Coach Desk"><img class="brand-logo" src="${urbanLogo}" alt="Urban Muaythai logo" width="58" height="58"><span>URBAN<span class="brand-sub">MUAYTHAI</span></span></a>
+ <aside class="sidebar"><a class="brand" href="/" aria-label="Urban Muaythai Member Care"><img class="brand-logo" src="${urbanLogo}" alt="Urban Muaythai logo" width="58" height="58"><span>URBAN<span class="brand-sub">MUAYTHAI</span></span></a>
  <div class="workspace-tag"><span class="tiny-dot"></span> RETENTION WORKSPACE</div>
- <div class="nav-label">COACH DESK</div><nav aria-label="Workspace">
+ <div class="nav-label">MEMBER CARE</div><nav aria-label="Workspace">
  ${[
    ["queue", "inbox", "Weekly outreach", active.length],
    ["due", "calendar-clock", "Follow-ups due", due],
@@ -192,11 +192,11 @@ function render() {
        `<button class="nav-item ${view === id ? "selected" : ""}" data-view="${id}">${icon(ic)}<span>${label}</span><b>${n}</b></button>`,
    )
    .join("")}</nav>
- <div class="sidebar-note"><div class="note-icon">${icon("heart-handshake")}</div><strong>A small check-in.<br>A stronger community.</strong><p>Reach out, leave context, and give the next coach a clear next step.</p></div>
- <div class="profile"><span class="avatar gold">${esc(initials(store.user.display_name))}</span><span><strong>${esc(store.user.display_name)}</strong><small>${store.demo ? "Sample workspace" : esc(store.user.role === "admin" ? "Administrator" : "Coach")}</small></span>${!store.demo ? `<button class="icon-button" id="signout" aria-label="Sign out">${icon("log-out")}</button>` : ""}</div></aside>
- <div class="main-shell"><header class="topbar"><div><span class="crumb">Coach Desk</span><span class="slash">/</span> Weekly outreach</div><div class="top-actions"><span class="connection ${store.demo ? "preview" : store.online ? "connected" : ""}"><span class="tiny-dot"></span>${store.demo ? "Preview mode" : store.online ? "Live updates on" : "Connected · auto-refresh"}</span><button class="icon-button" id="refresh" aria-label="Refresh workspace" title="Refresh">${icon("refresh-cw")}</button></div></header>
+ <div class="sidebar-note"><div class="note-icon">${icon("heart-handshake")}</div><strong>A small check-in.<br>A stronger community.</strong><p>Reach out, leave context, and give the next team member a clear next step.</p></div>
+ <div class="profile"><span class="avatar gold">${esc(initials(store.user.display_name))}</span><span><strong>${esc(store.user.display_name)}</strong><small>${store.demo ? "Sample workspace" : esc(store.user.role === "admin" ? "Administrator" : "Team member")}</small></span>${!store.demo ? `<button class="icon-button" id="signout" aria-label="Sign out">${icon("log-out")}</button>` : ""}</div></aside>
+ <div class="main-shell"><header class="topbar"><div><span class="crumb">Urban Member Care</span><span class="slash">/</span> Weekly outreach</div><div class="top-actions"><span class="connection ${store.demo ? "preview" : store.online ? "connected" : ""}"><span class="tiny-dot"></span>${store.demo ? "Preview mode" : store.online ? "Live updates on" : "Connected · auto-refresh"}</span><button class="icon-button" id="refresh" aria-label="Refresh workspace" title="Refresh">${icon("refresh-cw")}</button></div></header>
  ${store.demo ? `<div class="demo-banner">${icon("flask-conical")}<span><strong>Sample workspace.</strong> Fictional members; notes save only in this browser.</span><button id="reset-demo">Reset preview</button><button id="go-login">Back to sign in</button></div>` : ""}
- <main><div class="page-heading"><div><div class="eyebrow">EVERY MEMBER MATTERS</div><h1>${view === "handled" ? "Handled & exempt" : view === "due" ? "Follow-ups due" : view === "all" ? "All risk members" : "Weekly outreach"}<span class="heading-dot">.</span></h1><p>${view === "handled" ? "Completed and paused cases, with context for the next coach." : "A clear next step for every member who needs a check-in."}</p></div><div class="heading-actions"><label class="week-control">${icon("calendar-days")}<span><small>REPORT WEEK</small><select id="week" aria-label="Report week">${[
+ <main><div class="page-heading"><div><div class="eyebrow">EVERY MEMBER MATTERS</div><h1>${view === "handled" ? "Handled & exempt" : view === "due" ? "Follow-ups due" : view === "all" ? "All risk members" : "Weekly outreach"}<span class="heading-dot">.</span></h1><p>${view === "handled" ? "Completed and paused cases, with context for the next team member." : "A clear next step for every member who needs a check-in."}</p></div><div class="heading-actions"><label class="week-control">${icon("calendar-days")}<span><small>REPORT WEEK</small><select id="week" aria-label="Report week">${[
    ...store.data.weeks,
  ]
    .sort((a, b) => b.week.localeCompare(a.week))
@@ -229,6 +229,7 @@ function render() {
  <section class="weekly-progress"><span class="progress-symbol">${icon("heart-handshake")}</span><div class="progress-copy"><strong>Make every conversation count</strong><span>${handled} of ${all.length} risk members handled or exempt for this week.</span></div><div class="progress-meter"><div><span>WEEKLY COVERAGE</span><b>${progress}%</b></div><progress value="${handled}" max="${Math.max(1, all.length)}" aria-label="Members handled this week"></progress></div></section>
  <section class="queue-panel"><div class="panel-heading"><div><h2>${view === "handled" ? "Handled cases" : view === "due" ? "Your follow-up list" : view === "all" ? "Weekly member list" : "The reach-out list"} <span class="count-chip">${visible.length}</span></h2><p>${view === "handled" ? "Exemptions expire automatically. The member’s risk history stays intact." : "Start with Red members. Open a member to record your conversation."}</p></div><span class="subtle">${icon("shield-check")} Staff workspace</span></div>
  <div class="filters"><div class="priority-filters" role="group" aria-label="Filter by risk">${["All", "Red", "Yellow", "Watch"].map((p) => `<button data-priority="${p}" class="filter ${priority === p ? "active" : ""}" aria-pressed="${priority === p}">${p === "All" ? "All priorities" : `<span class="risk-dot ${p.toLowerCase()}"></span>${p === "Red" ? "Red" : p === "Yellow" ? "Yellow" : "Watch"}`}</button>`).join("")}</div><label class="search">${icon("search")}<input id="search" placeholder="Search members or signals…" aria-label="Search members" value="${esc(search)}"></label></div>
+ <details class="risk-guide"><summary>${icon("info")} How risk priorities work</summary><div class="risk-guide-grid"><article><span class="priority-pill red">Red · priority check-in</span><p>No sessions this week plus two or more consecutive zero weeks, or a stop from at least two sessions last week / a prior average of at least two.</p></article><article><span class="priority-pill yellow">Yellow · personal check-in</span><p>A new zero week with visits in the last 30 days, a drop of at least two sessions from last week or 1.5 below the prior average, or declining Fringe attendance.</p></article><article><span class="priority-pill watch">Watch · monitor</span><p>Still attending, marked Fringe and below their membership target, with no stronger Red or Yellow signal. Unlimited memberships use a target of four sessions.</p></article></div><p class="risk-guide-note"><strong>Attendance bands are different:</strong> 0 = Critical; 1 = At Risk; 2 = Low; 3 = Okay; 4+ = Good. Outreach priority also considers history and membership target. The first matching rule wins: Red, then Yellow, then Watch. Missing snapshots are not counted as zero. Current suspensions are held out of outreach.</p><p class="risk-guide-note"><strong>Missing history:</strong> review zero-attendance members manually when recent weekly snapshots are unavailable; they may not meet a priority rule.</p><p class="risk-guide-note">The weekly report supplies these priorities. Team notes change outreach status and temporary exemptions; they do not change the recorded risk category.</p></details>
  <div class="table-scroll"><table><thead><tr><th>MEMBER</th><th>RISK SIGNAL</th><th>RECENT WEEKS</th><th>OUTREACH STATUS</th><th><span class="sr-only">Open member</span></th></tr></thead><tbody>${
    visible
      .map((r) => {
@@ -529,7 +530,7 @@ function lockWorkspace() {
 }
 function authFrame(title, description, content) {
   $("#app").innerHTML =
-    `<main class="login-page"><div class="login-brand"><img src="${urbanLogo}" alt="Urban Muaythai logo" width="54" height="54"><div>URBAN MUAYTHAI <span>COACH DESK</span></div></div><section class="login-card"><div class="login-icon">${icon("lock-keyhole")}</div><div class="eyebrow">URBAN MUAYTHAI · STAFF ACCESS</div><h1>${title}</h1><p>${description}</p>${content}<div class="login-foot">${icon("shield-check")} Individual staff accounts · access approved by your administrator</div></section></main>`;
+    `<main class="login-page"><div class="login-brand"><img src="${urbanLogo}" alt="Urban Muaythai logo" width="54" height="54"><div>URBAN MUAYTHAI <span>MEMBER CARE</span></div></div><section class="login-card"><div class="login-icon">${icon("lock-keyhole")}</div><div class="eyebrow">URBAN MUAYTHAI · STAFF ACCESS</div><h1>${title}</h1><p>${description}</p>${content}<div class="login-foot">${icon("shield-check")} Individual staff accounts · access approved by your administrator</div></section></main>`;
   decorate();
 }
 function bindPasswordToggle() {
@@ -557,13 +558,13 @@ function showLogin(message = "", mode = "signin") {
     ? '<p class="setup-message" id="auth-setup">Staff sign-in is waiting for the Supabase connection. Accounts are not active yet. The sample workspace below is available for design review.</p>'
     : "";
   authFrame(
-    reset ? "Reset your password" : "Welcome back,<br>coach.",
+    reset ? "Reset your password" : "Welcome back,<br>Urban team.",
     reset
       ? "Enter your staff email and we’ll send a password reset link."
       : "Sign in to manage member check-ins, share notes and keep your team’s follow-ups moving.",
     `${setup}<form id="login-form"><label for="email">Staff email</label><input id="email" name="email" type="email" placeholder="you@urbanmuaythai.com" autocomplete="username" required>
   ${reset ? "" : `<label for="password" class="password-label">Password</label><div class="password-input"><input id="password" name="password" type="password" autocomplete="current-password" required><button id="toggle-password" class="icon-button" type="button" aria-label="Show password" aria-pressed="false">${icon("eye")}</button></div>`}
-  <p id="login-error" class="form-error" role="alert">${esc(message)}</p><p id="login-success" class="auth-success" role="status"></p><button id="login-submit" class="button primary" type="submit" ${configured ? "" : "disabled aria-describedby=auth-setup"}>${reset ? "Send reset link" : "Sign in to Coach Desk"} ${icon("arrow-right")}</button></form>
+  <p id="login-error" class="form-error" role="alert">${esc(message)}</p><p id="login-success" class="auth-success" role="status"></p><button id="login-submit" class="button primary" type="submit" ${configured ? "" : "disabled aria-describedby=auth-setup"}>${reset ? "Send reset link" : "Sign in to Urban Member Care"} ${icon("arrow-right")}</button></form>
   <button class="auth-link" id="auth-switch">${reset ? "Back to sign in" : "Forgot your password?"}</button>
   ${allowDemo && !reset ? `<div class="preview-divider"><span>DESIGN PREVIEW</span></div><button class="button secondary demo-start" id="start-demo">Explore sample workspace ${icon("arrow-up-right")}</button><p class="preview-disclosure">Fictional members only. Preview access does not sign you into the staff workspace.</p>` : ""}`,
   );
@@ -607,7 +608,7 @@ function showLogin(message = "", mode = "signin") {
       if (epoch === authEpoch && $("#login-submit")) {
         button.disabled = false;
         button.innerHTML =
-          (reset ? "Send reset link" : "Sign in to Coach Desk") +
+          (reset ? "Send reset link" : "Sign in to Urban Member Care") +
           icon("arrow-right");
         decorate();
       }

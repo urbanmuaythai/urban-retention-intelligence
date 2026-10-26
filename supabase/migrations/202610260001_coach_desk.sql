@@ -78,7 +78,7 @@ begin
  if found then return event_id; end if;
  select revision into current_revision from public.members where id=p_member_id for update;
  if not found then raise exception 'Member not found'; end if;
- if current_revision is distinct from p_expected_revision then raise exception 'Another coach updated this member. Refresh and review their note before saving.' using errcode='40001'; end if;
+ if current_revision is distinct from p_expected_revision then raise exception 'Another team member updated this member. Refresh and review their note before saving.' using errcode='40001'; end if;
  if not exists(select 1 from public.weekly_risks where week=p_week and member_id=p_member_id) then raise exception 'Member is not in this report week'; end if;
  if p_body is null or length(trim(p_body))=0 then raise exception 'A note is required'; end if;
  if p_assigned_to is not null and not exists(select 1 from public.staff where id=p_assigned_to and active) then raise exception 'Choose an active staff member'; end if;

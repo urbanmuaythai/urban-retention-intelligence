@@ -58,7 +58,7 @@ export function projectRows(risks, events, week) {
 }
 export function validateAction(action, week) {
   if (!action.body?.trim())
-    throw Error("Add a note so the next coach has context.");
+    throw Error("Add a note so the next team member has context.");
   if (action.body.length > 4000)
     throw Error("Notes must be 4,000 characters or fewer.");
   if (action.status && !(action.status in STATUS))

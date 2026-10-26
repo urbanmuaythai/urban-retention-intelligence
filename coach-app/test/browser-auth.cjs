@@ -15,7 +15,9 @@ fs.mkdirSync(artifactDir, { recursive: true });
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("http://127.0.0.1:5173/", { waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "Welcome back, coach." }).waitFor();
+  await page
+    .getByRole("heading", { name: "Welcome back, Urban team." })
+    .waitFor();
   assert.equal(
     await page.locator("tbody tr").count(),
     0,
@@ -54,7 +56,9 @@ fs.mkdirSync(artifactDir, { recursive: true });
   await page.getByRole("button", { name: "Explore sample workspace" }).click();
   await page.locator("#week").waitFor();
   await page.reload({ waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "Welcome back, coach." }).waitFor();
+  await page
+    .getByRole("heading", { name: "Welcome back, Urban team." })
+    .waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(
     await page.evaluate(
@@ -147,7 +151,7 @@ fs.mkdirSync(artifactDir, { recursive: true });
           ? [
               {
                 id: uid,
-                display_name: "Approved Test Coach",
+                display_name: "Approved Test Staff",
                 role: "coach",
                 active: true,
               },
@@ -185,7 +189,9 @@ fs.mkdirSync(artifactDir, { recursive: true });
   await live.locator("#week").waitFor();
   assert.ok(privateReads > 0, "Approved account loads workspace");
   await live.getByRole("button", { name: "Sign out", exact: true }).click();
-  await live.getByRole("heading", { name: "Welcome back, coach." }).waitFor();
+  await live
+    .getByRole("heading", { name: "Welcome back, Urban team." })
+    .waitFor();
   assert.equal(await live.locator("#week").count(), 0);
   assert.equal(await live.locator("#password").inputValue(), "");
   assert.deepEqual(errors, []);

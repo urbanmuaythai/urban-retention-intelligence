@@ -1814,6 +1814,62 @@ label .optional {
 .login-card button:disabled {
   cursor: not-allowed;
 }
+.risk-guide {
+  margin: 0 23px 18px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+}
+.risk-guide summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 12px 14px;
+  font-size: 11px;
+  color: var(--gold);
+}
+.risk-guide summary svg {
+  width: 14px;
+  height: 14px;
+}
+.risk-guide summary:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.risk-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding: 3px 14px 14px;
+}
+.risk-guide-grid article p {
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.risk-guide-note {
+  margin: 0 14px 13px;
+  font-size: 10px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.risk-guide-note strong {
+  color: var(--ink);
+}
+@media (max-width: 850px) {
+  .risk-guide-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+@media (max-width: 560px) {
+  .risk-guide {
+    margin-left: 15px;
+    margin-right: 15px;
+  }
+}
 
 /* Urban Muaythai identity shared with the Retention Intelligence report. */
 body::before {

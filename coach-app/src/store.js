@@ -29,6 +29,18 @@ export class Workspace {
       } catch {
         this.data = demoData();
       }
+      // Preserve existing preview notes while updating the app's staff terminology.
+      this.data.staff = this.data.staff.map((person) => ({
+        ...person,
+        display_name:
+          person.id === "demo-coach"
+            ? "Urban Team · Preview"
+            : person.display_name.replace(/\bcoach\b/gi, "team"),
+      }));
+      this.data.events = this.data.events.map((event) => ({
+        ...event,
+        author: (event.author || "Urban Team").replace(/\bcoach\b/gi, "team"),
+      }));
       this.user = this.data.staff[0];
       return this.data;
     }
@@ -108,7 +120,7 @@ export class Workspace {
         author: this.user.display_name,
         created_at: new Date().toISOString(),
       };
-      // Persist before acknowledging a successful save; report storage failures to the coach.
+      // Persist before acknowledging a successful save; report storage failures to staff.
       const next = structuredClone(this.data);
       next.events.push(event);
       const m = next.members.find((m) => m.id === member.id);
