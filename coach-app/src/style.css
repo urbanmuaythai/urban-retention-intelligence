@@ -1714,6 +1714,107 @@ label .optional {
   }
 }
 
+/* Staff sign-in is the landing page; preview access is a separate local path. */
+#login-form > input,
+#password-update > input,
+.password-input {
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  min-height: 45px;
+}
+#login-form > input,
+#password-update > input {
+  padding: 11px 12px;
+  font-size: 13px;
+}
+.password-label {
+  margin-top: 18px;
+}
+.password-input {
+  display: flex;
+  align-items: center;
+}
+.password-input input {
+  flex: 1;
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  min-width: 0;
+}
+.password-input input:focus {
+  outline: none;
+}
+.password-input:focus-within {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.password-input button {
+  flex-shrink: 0;
+  margin-right: 5px;
+}
+.auth-link {
+  display: block;
+  padding: 10px 0;
+  color: var(--gold);
+  font-size: 11px;
+  margin: 8px auto 0;
+}
+.auth-link:hover {
+  text-decoration: underline;
+}
+.auth-success {
+  color: #9ce6c2;
+  font-size: 11px;
+  line-height: 1.8;
+  margin-bottom: 12px;
+}
+.preview-divider {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 17px;
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: 1.5px;
+}
+.preview-divider::before,
+.preview-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--line);
+}
+.preview-disclosure {
+  font-size: 10px !important;
+  text-align: center;
+  margin: 10px 0 0 !important;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.login-card .login-foot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1.7;
+}
+.login-foot svg {
+  width: 13px;
+  height: 13px;
+}
+.login-card #login-form .form-error {
+  margin-top: 12px;
+}
+.login-card button:disabled {
+  cursor: not-allowed;
+}
+
 /* Urban Muaythai identity shared with the Retention Intelligence report. */
 body::before {
   content: "";

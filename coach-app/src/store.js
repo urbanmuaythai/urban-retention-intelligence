@@ -4,7 +4,15 @@ import { validateAction, validateImport } from "./domain.js";
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 export const configured = Boolean(url && key);
+export const allowDemo =
+  import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO === "true";
 export const client = configured ? createClient(url, key) : null;
+export class StaffAccessError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "StaffAccessError";
+  }
+}
 const storageKey = "urban-coach-preview-v1";
 export class Workspace {
   constructor(demo = false) {
@@ -24,19 +32,34 @@ export class Workspace {
       this.user = this.data.staff[0];
       return this.data;
     }
+    if (!client)
+      throw new StaffAccessError("Staff sign-in is not connected yet.");
     const {
       data: { session },
+      error: sessionError,
     } = await client.auth.getSession();
-    if (!session) throw Error("Please sign in to your staff account.");
+    if (sessionError || !session)
+      throw new StaffAccessError(
+        "Your session has ended. Please sign in again.",
+      );
     const { data: staff, error: staffError } = await client
       .from("staff")
       .select("*")
       .eq("id", session.user.id)
       .eq("active", true)
       .maybeSingle();
-    if (staffError) throw staffError;
+    if (staffError) {
+      if (
+        [401, 403].includes(staffError.status) ||
+        staffError.code === "PGRST301"
+      )
+        throw new StaffAccessError(
+          "Your session has ended. Please sign in again.",
+        );
+      throw staffError;
+    }
     if (!staff)
-      throw Error(
+      throw new StaffAccessError(
         "Your account needs staff approval. Ask your administrator to enable access.",
       );
     this.user = staff;

@@ -23,6 +23,9 @@ import {
   Check,
   UploadCloud,
   ArrowRight,
+  Eye,
+  EyeOff,
+  LockKeyhole,
 } from "lucide";
 import "@fontsource/inter/latin-400.css";
 import "@fontsource/inter/latin-600.css";
@@ -31,7 +34,13 @@ import "@fontsource/inter/latin-800.css";
 import "@fontsource/bebas-neue/latin-400.css";
 import urbanLogo from "./assets/urban-muaythai-logo.png";
 import "./style.css";
-import { Workspace, client, configured } from "./store.js";
+import {
+  Workspace,
+  client,
+  configured,
+  allowDemo,
+  StaffAccessError,
+} from "./store.js";
 import {
   STATUS,
   addDays,
@@ -65,6 +74,9 @@ const icons = {
   Check,
   UploadCloud,
   ArrowRight,
+  Eye,
+  EyeOff,
+  LockKeyhole,
 };
 const esc = (s) =>
   String(s ?? "").replace(
@@ -102,6 +114,9 @@ let store,
   lastSync = null,
   importPayload = null;
 let toastTimer;
+let authEpoch = 0;
+let recoveryActive =
+  new URLSearchParams(location.search).get("flow") === "recovery";
 function toast(message, error = false) {
   const el = $("#toast");
   el.textContent = message;
@@ -180,7 +195,7 @@ function render() {
  <div class="sidebar-note"><div class="note-icon">${icon("heart-handshake")}</div><strong>A small check-in.<br>A stronger community.</strong><p>Reach out, leave context, and give the next coach a clear next step.</p></div>
  <div class="profile"><span class="avatar gold">${esc(initials(store.user.display_name))}</span><span><strong>${esc(store.user.display_name)}</strong><small>${store.demo ? "Sample workspace" : esc(store.user.role === "admin" ? "Administrator" : "Coach")}</small></span>${!store.demo ? `<button class="icon-button" id="signout" aria-label="Sign out">${icon("log-out")}</button>` : ""}</div></aside>
  <div class="main-shell"><header class="topbar"><div><span class="crumb">Coach Desk</span><span class="slash">/</span> Weekly outreach</div><div class="top-actions"><span class="connection ${store.demo ? "preview" : store.online ? "connected" : ""}"><span class="tiny-dot"></span>${store.demo ? "Preview mode" : store.online ? "Live updates on" : "Connected · auto-refresh"}</span><button class="icon-button" id="refresh" aria-label="Refresh workspace" title="Refresh">${icon("refresh-cw")}</button></div></header>
- ${store.demo ? `<div class="demo-banner">${icon("flask-conical")}<span><strong>Sample workspace.</strong> Fictional members; notes save only in this browser.</span><button id="reset-demo">Reset preview</button>${configured ? '<button id="go-login">Staff sign in</button>' : ""}</div>` : ""}
+ ${store.demo ? `<div class="demo-banner">${icon("flask-conical")}<span><strong>Sample workspace.</strong> Fictional members; notes save only in this browser.</span><button id="reset-demo">Reset preview</button><button id="go-login">Back to sign in</button></div>` : ""}
  <main><div class="page-heading"><div><div class="eyebrow">EVERY MEMBER MATTERS</div><h1>${view === "handled" ? "Handled & exempt" : view === "due" ? "Follow-ups due" : view === "all" ? "All risk members" : "Weekly outreach"}<span class="heading-dot">.</span></h1><p>${view === "handled" ? "Completed and paused cases, with context for the next coach." : "A clear next step for every member who needs a check-in."}</p></div><div class="heading-actions"><label class="week-control">${icon("calendar-days")}<span><small>REPORT WEEK</small><select id="week" aria-label="Report week">${[
    ...store.data.weeks,
  ]
@@ -272,9 +287,19 @@ function bind() {
   if ($("#go-login")) $("#go-login").onclick = () => showLogin();
   if ($("#signout"))
     $("#signout").onclick = async () => {
-      await store.dispose();
-      await client.auth.signOut();
+      const previous = store;
       showLogin();
+      try {
+        const { error } = await client.auth.signOut();
+        if (error) throw error;
+      } catch (error) {
+        toast(
+          "Could not end your server session. Please retry signing out before leaving this device.",
+          true,
+        );
+      } finally {
+        previous?.dispose();
+      }
     };
   if ($("#import-open")) $("#import-open").onclick = openImport;
 }
@@ -426,7 +451,7 @@ function openImport() {
   };
 }
 async function refresh(silent = false) {
-  if (refreshing) return;
+  if (refreshing || !store) return;
   if (selected || $("#import-dialog")?.open) {
     pendingRefresh = true;
     if (!silent)
@@ -434,69 +459,198 @@ async function refresh(silent = false) {
     return;
   }
   refreshing = true;
+  const workspace = store,
+    epoch = authEpoch;
   try {
-    await store.load();
+    await workspace.load();
+    if (epoch !== authEpoch || store !== workspace) return;
     lastSync = new Date();
     render();
     if (!silent) toast("Workspace refreshed.");
   } catch (err) {
-    toast("Refresh failed: " + err.message, true);
+    if (epoch !== authEpoch) return;
+    if (err instanceof StaffAccessError) showLogin(err.message);
+    else toast("Refresh failed: " + err.message, true);
   } finally {
     refreshing = false;
   }
 }
 async function start(demo) {
-  if (store) await store.dispose();
-  store = new Workspace(demo);
+  if (demo && !allowDemo) return showLogin();
+  const epoch = ++authEpoch,
+    previous = store;
+  store = null;
+  await previous?.dispose();
+  if (epoch !== authEpoch) return;
+  const workspace = new Workspace(demo);
+  store = workspace;
   try {
-    await store.load();
+    await workspace.load();
+    if (epoch !== authEpoch) {
+      workspace.dispose();
+      return;
+    }
     week = demo
       ? "2026-10-26"
-      : store.data.weeks.at(-1)?.week || brisbaneToday();
+      : workspace.data.weeks.at(-1)?.week || brisbaneToday();
     view = "queue";
     search = "";
     priority = "All";
     lastSync = new Date();
     render();
-    store.subscribe(
-      () => refresh(true),
+    workspace.subscribe(
       () => {
+        if (epoch === authEpoch) refresh(true);
+      },
+      () => {
+        if (epoch !== authEpoch) return;
         const el = $(".connection");
         if (el) {
-          el.className = "connection " + (store.online ? "connected" : "");
+          el.className = "connection " + (workspace.online ? "connected" : "");
           el.innerHTML =
             '<span class="tiny-dot"></span>' +
-            (store.online ? "Live updates on" : "Connected · auto-refresh");
+            (workspace.online ? "Live updates on" : "Connected · auto-refresh");
         }
       },
     );
   } catch (err) {
-    showLogin(err.message);
+    if (epoch === authEpoch) showLogin(err.message);
   }
 }
-function showLogin(message = "") {
+function lockWorkspace() {
+  authEpoch++;
+  const previous = store;
+  store = null;
+  previous?.dispose();
+  if (previous) previous.data = null;
   selected = null;
+  pendingRefresh = false;
+  busy = false;
+}
+function authFrame(title, description, content) {
   $("#app").innerHTML =
-    `<main class="login-page"><div class="login-brand"><img src="${urbanLogo}" alt="Urban Muaythai logo" width="54" height="54"><div>URBAN MUAYTHAI <span>COACH DESK</span></div></div><section class="login-card"><div class="login-icon">${icon("heart-handshake")}</div><div class="eyebrow">EVERY MEMBER MATTERS</div><h1>Good coaching<br>starts with a check-in.</h1><p>Your team’s weekly outreach, conversations and follow-ups. All in one place.</p>${configured ? `<form id="login-form"><label>Staff email<input id="email" type="email" autocomplete="username" required></label><label>Password<input id="password" type="password" autocomplete="current-password" required></label><p id="login-error" class="form-error" role="alert">${esc(message)}</p><button class="button primary" type="submit">Sign in to Coach Desk ${icon("arrow-right")}</button></form>` : '<p class="setup-message">Supabase is not configured yet. Explore the working sample while the live workspace is connected.</p>'}<button class="button secondary demo-start" id="start-demo">Explore sample workspace ${icon("arrow-up-right")}</button><small class="login-foot">Staff access is approved by your administrator.</small></section></main>`;
+    `<main class="login-page"><div class="login-brand"><img src="${urbanLogo}" alt="Urban Muaythai logo" width="54" height="54"><div>URBAN MUAYTHAI <span>COACH DESK</span></div></div><section class="login-card"><div class="login-icon">${icon("lock-keyhole")}</div><div class="eyebrow">URBAN MUAYTHAI · STAFF ACCESS</div><h1>${title}</h1><p>${description}</p>${content}<div class="login-foot">${icon("shield-check")} Individual staff accounts · access approved by your administrator</div></section></main>`;
   decorate();
-  $("#start-demo").onclick = () => start(true);
-  if ($("#login-form"))
-    $("#login-form").onsubmit = async (e) => {
-      e.preventDefault();
-      const b = e.target.querySelector("button");
-      b.disabled = true;
-      try {
-        const { error } = await client.auth.signInWithPassword({
-          email: $("#email").value,
-          password: $("#password").value,
+}
+function bindPasswordToggle() {
+  const button = $("#toggle-password");
+  if (!button) return;
+  button.onclick = () => {
+    const field = $("#password"),
+      shown = field.type === "password";
+    field.type = shown ? "text" : "password";
+    button.setAttribute(
+      "aria-label",
+      shown ? "Hide password" : "Show password",
+    );
+    button.setAttribute("aria-pressed", String(shown));
+    button.innerHTML = icon(shown ? "eye-off" : "eye");
+    decorate();
+    field.focus();
+  };
+}
+function showLogin(message = "", mode = "signin") {
+  lockWorkspace();
+  recoveryActive = false;
+  const reset = mode === "reset";
+  const setup = !configured
+    ? '<p class="setup-message" id="auth-setup">Staff sign-in is waiting for the Supabase connection. Accounts are not active yet. The sample workspace below is available for design review.</p>'
+    : "";
+  authFrame(
+    reset ? "Reset your password" : "Welcome back,<br>coach.",
+    reset
+      ? "Enter your staff email and we’ll send a password reset link."
+      : "Sign in to manage member check-ins, share notes and keep your team’s follow-ups moving.",
+    `${setup}<form id="login-form"><label for="email">Staff email</label><input id="email" name="email" type="email" placeholder="you@urbanmuaythai.com" autocomplete="username" required>
+  ${reset ? "" : `<label for="password" class="password-label">Password</label><div class="password-input"><input id="password" name="password" type="password" autocomplete="current-password" required><button id="toggle-password" class="icon-button" type="button" aria-label="Show password" aria-pressed="false">${icon("eye")}</button></div>`}
+  <p id="login-error" class="form-error" role="alert">${esc(message)}</p><p id="login-success" class="auth-success" role="status"></p><button id="login-submit" class="button primary" type="submit" ${configured ? "" : "disabled aria-describedby=auth-setup"}>${reset ? "Send reset link" : "Sign in to Coach Desk"} ${icon("arrow-right")}</button></form>
+  <button class="auth-link" id="auth-switch">${reset ? "Back to sign in" : "Forgot your password?"}</button>
+  ${allowDemo && !reset ? `<div class="preview-divider"><span>DESIGN PREVIEW</span></div><button class="button secondary demo-start" id="start-demo">Explore sample workspace ${icon("arrow-up-right")}</button><p class="preview-disclosure">Fictional members only. Preview access does not sign you into the staff workspace.</p>` : ""}`,
+  );
+  bindPasswordToggle();
+  if ($("#start-demo")) $("#start-demo").onclick = () => start(true);
+  $("#auth-switch").onclick = () => showLogin("", reset ? "signin" : "reset");
+  $("#login-form").onsubmit = async (e) => {
+    e.preventDefault();
+    if (!configured) return;
+    const epoch = authEpoch,
+      button = $("#login-submit"),
+      email = $("#email").value.trim();
+    const password = reset ? null : $("#password").value;
+    button.disabled = true;
+    button.textContent = reset ? "Sending…" : "Signing in…";
+    $("#login-error").textContent = "";
+    try {
+      if (reset) {
+        const { error } = await client.auth.resetPasswordForEmail(email, {
+          redirectTo: location.origin + location.pathname + "?flow=recovery",
         });
         if (error) throw error;
-        await start(false);
-      } catch (err) {
-        $("#login-error").textContent = err.message;
-        b.disabled = false;
+        if (epoch === authEpoch)
+          $("#login-success").textContent =
+            "If this email is eligible, a reset link will arrive shortly. Check your inbox.";
+      } else {
+        const { error } = await client.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        if (epoch === authEpoch) await start(false);
       }
-    };
+    } catch (error) {
+      if (epoch === authEpoch)
+        $("#login-error").textContent =
+          error.status === 400 && !reset
+            ? "Email or password wasn’t recognised. Try again or reset your password."
+            : error.message;
+    } finally {
+      if (epoch === authEpoch && $("#login-submit")) {
+        button.disabled = false;
+        button.innerHTML =
+          (reset ? "Send reset link" : "Sign in to Coach Desk") +
+          icon("arrow-right");
+        decorate();
+      }
+    }
+  };
+}
+function showPasswordUpdate() {
+  lockWorkspace();
+  recoveryActive = true;
+  authFrame(
+    "Set a new password",
+    "Choose a new password for your staff account.",
+    `<form id="password-update"><label for="password">New password</label><div class="password-input"><input id="password" type="password" autocomplete="new-password" minlength="12" required><button id="toggle-password" class="icon-button" type="button" aria-label="Show password" aria-pressed="false">${icon("eye")}</button></div><label for="confirm-password" class="password-label">Confirm password</label><input id="confirm-password" type="password" autocomplete="new-password" minlength="12" required><p class="field-help">Use at least 12 characters.</p><p id="login-error" class="form-error" role="alert"></p><button class="button primary" type="submit">Save new password</button></form>`,
+  );
+  bindPasswordToggle();
+  $("#password-update").onsubmit = async (e) => {
+    e.preventDefault();
+    if (!client) return;
+    if ($("#password").value !== $("#confirm-password").value) {
+      $("#login-error").textContent = "The passwords don’t match.";
+      return;
+    }
+    const epoch = authEpoch,
+      button = e.target.querySelector('[type="submit"]');
+    button.disabled = true;
+    try {
+      const { error } = await client.auth.updateUser({
+        password: $("#password").value,
+      });
+      if (error) throw error;
+      if (epoch !== authEpoch) return;
+      recoveryActive = false;
+      history.replaceState(null, "", location.pathname);
+      await client.auth.signOut();
+      showLogin();
+      toast("Password updated. Sign in with your new password.");
+    } catch (error) {
+      if (epoch === authEpoch) {
+        $("#login-error").textContent = error.message;
+        button.disabled = false;
+      }
+    }
+  };
 }
 setInterval(() => {
   if (
@@ -522,14 +676,34 @@ window.addEventListener("offline", () =>
     true,
   ),
 );
+showLogin();
 if (configured) {
+  const bootEpoch = authEpoch;
+  const recoveryRequested =
+    new URLSearchParams(location.search).get("flow") === "recovery";
+  client.auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_OUT") showLogin();
+    if (event === "PASSWORD_RECOVERY") showPasswordUpdate();
+  });
   client.auth
     .getSession()
-    .then(({ data }) => (data.session ? start(false) : showLogin()));
-  client.auth.onAuthStateChange((event) => {
-    if (event === "SIGNED_OUT") {
-      store?.dispose();
-      showLogin();
-    }
-  });
-} else start(true);
+    .then(({ data, error }) => {
+      if (authEpoch !== bootEpoch) return;
+      if (error) {
+        showLogin("Your session could not be restored. Please sign in again.");
+        return;
+      }
+      if (recoveryRequested) {
+        if (data.session) showPasswordUpdate();
+        else
+          showLogin(
+            "This password reset link has expired. Request a new one.",
+            "reset",
+          );
+      } else if (data.session && !recoveryActive) start(false);
+    })
+    .catch(() => {
+      if (authEpoch === bootEpoch)
+        showLogin("Could not connect. Please try signing in again.");
+    });
+}

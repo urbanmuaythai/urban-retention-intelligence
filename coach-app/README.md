@@ -25,14 +25,14 @@ npm test
 npm run dev
 ```
 
-Without Supabase configuration the UI displays a clearly labelled, fictional sample workspace. Its notes save only to this browser. Sample data never substitutes for failed production queries. Reset preview removes only sample notes. This is sufficient to review the workflow, not a hosted shared database.
+The app opens on the branded staff sign-in screen. Without Supabase configuration, sign-in is disabled with a clear setup message. Development offers a separate fictional sample workspace; its notes save only in this browser and reopening the app returns to sign-in. Production hides sample access unless VITE_ENABLE_DEMO=true is explicitly configured. Sample data never substitutes for failed production queries.
 
 Copy `.env.example` to `.env.local` and supply the project's public URL and publishable key (legacy `anon` keys also work). Never put a service-role key, database password, or management token in a `VITE_` variable. Vite variables are public in the built app. Database access is protected by Supabase Auth and RLS, not by hiding the public key.
 
 ## Supabase setup
 
 1. Choose a Supabase project for Urban Muaythai. Apply `supabase/migrations/202610260001_coach_desk.sql` once through the SQL editor or your normal migration workflow. The migration creates only the Coach Desk's tables and functions; review names for conflicts in a shared project.
-2. In Supabase Auth, disable public sign-ups and create/invite the required staff users. Configure the deployed site's Auth URL. The app uses email/password sign-in; an admin can set a password for the first test account using the Auth dashboard. Invitation/password-reset UI is not implemented in this first version.
+2. In Supabase Auth, disable public sign-ups and create/invite the required staff users. Configure the deployed site's Auth URL. The app uses email/password sign-in with password visibility, reset-request and recovery screens. Add the deployed origin and the recovery return URL (`https://YOUR-HOST/?flow=recovery`) to the Auth redirect allowlist. Reset-email delivery depends on the project email configuration and must be verified on the live project. Administrators create and approve accounts; public self-registration is not offered. An admin can set an initial password using the Auth dashboard. Sign-out clears the displayed workspace and private records from application memory; expired or unapproved sessions return to sign-in.
 3. Bootstrap the first administrator from the SQL editor, replacing the placeholders with an existing Auth user's UUID and name:
 
 ```sql
@@ -72,6 +72,8 @@ The coach app has no client-side path router, so it does not need broad rewrite 
 ## Verification
 
 `npm test` runs decision-rule tests and executes the actual migration against PGlite PostgreSQL with Auth role stubs. Coverage includes expiry on the next run, preserving historical reports, note-only updates, explicit reopening, approved/anonymous/deactivated access, immutable staff attribution, idempotent saves, stale revision conflicts, atomic rollback and history-preserving imports. This is real SQL execution, not a hosted Supabase integration test. Confirm Auth and Realtime against the chosen live Supabase project before staff launch.
+
+`npm run test:browser-auth` runs the repeatable login checks with Playwright: start the development server on port 5173 and `npm run preview -- --port 5174` against a fresh build first. On Windows it uses installed Microsoft Edge; on other platforms install Playwright Chromium. It checks the login gate, preview separation, password visibility and reset screens, production demo restrictions, plus invalid, unapproved and approved sign-in and sign-out using mocked HTTP responses with the real Supabase SDK. This does not replace testing the configured live Auth project.
 
 `npm run build` produces the deployable app. Browser QA covers mobile and desktop, filters, member history, saving notes, next-week exclusion, expiration/reappearance and reopening. Hosting and cross-device sync cannot be verified until the external projects are connected.
 
