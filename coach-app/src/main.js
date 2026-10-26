@@ -24,6 +24,12 @@ import {
   UploadCloud,
   ArrowRight,
 } from "lucide";
+import "@fontsource/inter/latin-400.css";
+import "@fontsource/inter/latin-600.css";
+import "@fontsource/inter/latin-700.css";
+import "@fontsource/inter/latin-800.css";
+import "@fontsource/bebas-neue/latin-400.css";
+import urbanLogo from "./assets/urban-muaythai-logo.png";
 import "./style.css";
 import { Workspace, client, configured } from "./store.js";
 import {
@@ -157,7 +163,7 @@ function render() {
   const progress = all.length ? Math.round((handled / all.length) * 100) : 0;
   const visible = filtered();
   $("#app").innerHTML = `<div class="workspace">
- <aside class="sidebar"><a class="brand" href="/" aria-label="Urban Muaythai Coach Desk"><span class="brand-mark">U<span>↗</span></span><span>URBAN<span class="brand-sub">MUAYTHAI</span></span></a>
+ <aside class="sidebar"><a class="brand" href="/" aria-label="Urban Muaythai Coach Desk"><img class="brand-logo" src="${urbanLogo}" alt="Urban Muaythai logo" width="58" height="58"><span>URBAN<span class="brand-sub">MUAYTHAI</span></span></a>
  <div class="workspace-tag"><span class="tiny-dot"></span> RETENTION WORKSPACE</div>
  <div class="nav-label">COACH DESK</div><nav aria-label="Workspace">
  ${[
@@ -471,7 +477,7 @@ async function start(demo) {
 function showLogin(message = "") {
   selected = null;
   $("#app").innerHTML =
-    `<main class="login-page"><div class="login-brand">URBAN MUAYTHAI <span>COACH DESK</span></div><section class="login-card"><div class="login-icon">${icon("heart-handshake")}</div><div class="eyebrow">EVERY MEMBER MATTERS</div><h1>Good coaching<br>starts with a check-in.</h1><p>Your team’s weekly outreach, conversations and follow-ups. All in one place.</p>${configured ? `<form id="login-form"><label>Staff email<input id="email" type="email" autocomplete="username" required></label><label>Password<input id="password" type="password" autocomplete="current-password" required></label><p id="login-error" class="form-error" role="alert">${esc(message)}</p><button class="button primary" type="submit">Sign in to Coach Desk ${icon("arrow-right")}</button></form>` : '<p class="setup-message">Supabase is not configured yet. Explore the working sample while the live workspace is connected.</p>'}<button class="button secondary demo-start" id="start-demo">Explore sample workspace ${icon("arrow-up-right")}</button><small class="login-foot">Staff access is approved by your administrator.</small></section></main>`;
+    `<main class="login-page"><div class="login-brand"><img src="${urbanLogo}" alt="Urban Muaythai logo" width="54" height="54"><div>URBAN MUAYTHAI <span>COACH DESK</span></div></div><section class="login-card"><div class="login-icon">${icon("heart-handshake")}</div><div class="eyebrow">EVERY MEMBER MATTERS</div><h1>Good coaching<br>starts with a check-in.</h1><p>Your team’s weekly outreach, conversations and follow-ups. All in one place.</p>${configured ? `<form id="login-form"><label>Staff email<input id="email" type="email" autocomplete="username" required></label><label>Password<input id="password" type="password" autocomplete="current-password" required></label><p id="login-error" class="form-error" role="alert">${esc(message)}</p><button class="button primary" type="submit">Sign in to Coach Desk ${icon("arrow-right")}</button></form>` : '<p class="setup-message">Supabase is not configured yet. Explore the working sample while the live workspace is connected.</p>'}<button class="button secondary demo-start" id="start-demo">Explore sample workspace ${icon("arrow-up-right")}</button><small class="login-foot">Staff access is approved by your administrator.</small></section></main>`;
   decorate();
   $("#start-demo").onclick = () => start(true);
   if ($("#login-form"))
