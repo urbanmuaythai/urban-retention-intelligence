@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 5173",
     "test": "node --test test/*.test.mjs",
-    "test:browser-auth": "node test/browser-auth.cjs"
+    "test:browser-auth": "node test/browser-auth.cjs",
+    "test:browser-csv": "node test/browser-csv.cjs"
   },
   "dependencies": {
     "@fontsource/bebas-neue": "^5.3.0",

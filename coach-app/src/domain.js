@@ -43,7 +43,7 @@ export function disposition(memberId, week, events) {
   };
 }
 export function projectRows(risks, events, week) {
-  const rank = { Red: 0, Yellow: 1, Watch: 2 };
+  const rank = { Red: 0, Yellow: 1, Watch: 2, Review: 3 };
   return risks
     .filter((r) => r.week === week)
     .map((r) => ({ ...r, ...disposition(r.member_id, week, events) }))
@@ -88,16 +88,18 @@ export function validateImport(payload) {
     throw Error("Report week must be a valid Monday.");
   if (
     !Array.isArray(payload.members) ||
-    payload.members.length === 0 ||
+    (payload.members.length === 0 && !payload.attendance_snapshot?.length) ||
     payload.members.length > 5000
   )
-    throw Error("Import must contain 1–5,000 risk members.");
+    throw Error(
+      "Import must contain risk members or a complete eligible attendance snapshot (maximum 5,000 people).",
+    );
   const keys = new Set();
   for (const m of payload.members) {
     if (
       !m.member_id ||
       !m.name?.trim() ||
-      !["Red", "Yellow", "Watch"].includes(m.priority) ||
+      !["Red", "Yellow", "Watch", "Review"].includes(m.priority) ||
       !m.signal
     )
       throw Error("Every member needs an ID, name, priority and risk signal.");
@@ -113,6 +115,36 @@ export function validateImport(payload) {
         m.sequence.some((x) => x !== null && (!Number.isInteger(x) || x < 0)))
     )
       throw Error("Invalid attendance history.");
+  }
+  if (payload.attendance_snapshot !== undefined) {
+    if (
+      !Array.isArray(payload.attendance_snapshot) ||
+      !payload.attendance_snapshot.length ||
+      payload.attendance_snapshot.length > 5000
+    )
+      throw Error("Attendance snapshot must contain 1–5,000 people.");
+    const snapshot = new Map();
+    for (const m of payload.attendance_snapshot) {
+      if (
+        !m.member_id ||
+        snapshot.has(m.member_id) ||
+        !Number.isInteger(m.s7) ||
+        !Number.isInteger(m.s30) ||
+        m.s7 < 0 ||
+        m.s30 < m.s7
+      )
+        throw Error(
+          "Attendance snapshot has missing IDs, duplicate people or invalid totals.",
+        );
+      snapshot.set(m.member_id, m);
+    }
+    for (const m of payload.members) {
+      const row = snapshot.get(m.member_id);
+      if (!row || row.s7 !== m.s7 || row.s30 !== m.s30)
+        throw Error(
+          "Risk members must match the eligible attendance snapshot.",
+        );
+    }
   }
   return payload;
 }

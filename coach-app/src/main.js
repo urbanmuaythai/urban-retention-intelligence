@@ -34,6 +34,7 @@ import "@fontsource/inter/latin-800.css";
 import "@fontsource/bebas-neue/latin-400.css";
 import urbanLogo from "./assets/urban-muaythai-logo.png";
 import "./style.css";
+import { showImport } from "./import-dialog.js";
 import {
   Workspace,
   client,
@@ -41,13 +42,7 @@ import {
   allowDemo,
   StaffAccessError,
 } from "./store.js";
-import {
-  STATUS,
-  addDays,
-  brisbaneToday,
-  projectRows,
-  validateImport,
-} from "./domain.js";
+import { STATUS, addDays, brisbaneToday, projectRows } from "./domain.js";
 
 const $ = (s) => document.querySelector(s);
 const icons = {
@@ -111,8 +106,7 @@ let store,
   busy = false,
   pendingRefresh = false,
   refreshing = false,
-  lastSync = null,
-  importPayload = null;
+  lastSync = null;
 let toastTimer;
 let authEpoch = 0;
 let recoveryActive =
@@ -228,8 +222,8 @@ function render() {
  </section>
  <section class="weekly-progress"><span class="progress-symbol">${icon("heart-handshake")}</span><div class="progress-copy"><strong>Make every conversation count</strong><span>${handled} of ${all.length} risk members handled or exempt for this week.</span></div><div class="progress-meter"><div><span>WEEKLY COVERAGE</span><b>${progress}%</b></div><progress value="${handled}" max="${Math.max(1, all.length)}" aria-label="Members handled this week"></progress></div></section>
  <section class="queue-panel"><div class="panel-heading"><div><h2>${view === "handled" ? "Handled cases" : view === "due" ? "Your follow-up list" : view === "all" ? "Weekly member list" : "The reach-out list"} <span class="count-chip">${visible.length}</span></h2><p>${view === "handled" ? "Exemptions expire automatically. The member’s risk history stays intact." : "Start with Red members. Open a member to record your conversation."}</p></div><span class="subtle">${icon("shield-check")} Staff workspace</span></div>
- <div class="filters"><div class="priority-filters" role="group" aria-label="Filter by risk">${["All", "Red", "Yellow", "Watch"].map((p) => `<button data-priority="${p}" class="filter ${priority === p ? "active" : ""}" aria-pressed="${priority === p}">${p === "All" ? "All priorities" : `<span class="risk-dot ${p.toLowerCase()}"></span>${p === "Red" ? "Red" : p === "Yellow" ? "Yellow" : "Watch"}`}</button>`).join("")}</div><label class="search">${icon("search")}<input id="search" placeholder="Search members or signals…" aria-label="Search members" value="${esc(search)}"></label></div>
- <details class="risk-guide"><summary>${icon("info")} How risk priorities work</summary><div class="risk-guide-grid"><article><span class="priority-pill red">Red · priority check-in</span><p>No sessions this week plus two or more consecutive zero weeks, or a stop from at least two sessions last week / a prior average of at least two.</p></article><article><span class="priority-pill yellow">Yellow · personal check-in</span><p>A new zero week with visits in the last 30 days, a drop of at least two sessions from last week or 1.5 below the prior average, or declining Fringe attendance.</p></article><article><span class="priority-pill watch">Watch · monitor</span><p>Still attending, marked Fringe and below their membership target, with no stronger Red or Yellow signal. Unlimited memberships use a target of four sessions.</p></article></div><p class="risk-guide-note"><strong>Attendance bands are different:</strong> 0 = Critical; 1 = At Risk; 2 = Low; 3 = Okay; 4+ = Good. Outreach priority also considers history and membership target. The first matching rule wins: Red, then Yellow, then Watch. Missing snapshots are not counted as zero. Current suspensions are held out of outreach.</p><p class="risk-guide-note"><strong>Missing history:</strong> review zero-attendance members manually when recent weekly snapshots are unavailable; they may not meet a priority rule.</p><p class="risk-guide-note">The weekly report supplies these priorities. Team notes change outreach status and temporary exemptions; they do not change the recorded risk category.</p></details>
+ <div class="filters"><div class="priority-filters" role="group" aria-label="Filter by risk">${["All", "Red", "Yellow", "Watch", "Review"].map((p) => `<button data-priority="${p}" class="filter ${priority === p ? "active" : ""}" aria-pressed="${priority === p}">${p === "All" ? "All priorities" : `<span class="risk-dot ${p.toLowerCase()}"></span>${p}`}</button>`).join("")}</div><label class="search">${icon("search")}<input id="search" placeholder="Search members or signals…" aria-label="Search members" value="${esc(search)}"></label></div>
+ <details class="risk-guide"><summary>${icon("info")} How risk priorities work</summary><div class="risk-guide-grid"><article><span class="priority-pill red">Red · priority check-in</span><p>No sessions this week plus two or more consecutive zero weeks, or a stop from at least two sessions last week / a prior average of at least two.</p></article><article><span class="priority-pill yellow">Yellow · personal check-in</span><p>A new zero week with visits in the last 30 days, a drop of at least two sessions from last week or 1.5 below the prior average, or declining Fringe attendance.</p></article><article><span class="priority-pill watch">Watch · monitor</span><p>Still attending, marked Fringe and below their membership target, with no stronger Red or Yellow signal. Unlimited memberships use a target of four sessions.</p></article><article><span class="priority-pill review">Review · missing context</span><p>Zero attendance without enough weekly history, or below-target attendance without the engagement label needed for Watch. Review these cases before choosing an outreach outcome.</p></article></div><p class="risk-guide-note"><strong>Attendance bands are different:</strong> 0 = Critical; 1 = At Risk; 2 = Low; 3 = Okay; 4+ = Good. Outreach priority also considers history and membership target. The first matching rule wins: Red, then Yellow, then Watch. Missing snapshots are not counted as zero. Current suspensions are held out of outreach.</p><p class="risk-guide-note"><strong>Missing history:</strong> CSV imports keep missing snapshots unknown and flag unresolved cases as Review. They do not assume a Red risk or invent a Fringe engagement label.</p><p class="risk-guide-note">Imported reports supply these priorities; CSV imports calculate them from the selected cutoff and saved weekly attendance. Team notes change outreach status and temporary exemptions; they do not change the recorded risk category.</p></details>
  <div class="table-scroll"><table><thead><tr><th>MEMBER</th><th>RISK SIGNAL</th><th>RECENT WEEKS</th><th>OUTREACH STATUS</th><th><span class="sr-only">Open member</span></th></tr></thead><tbody>${
    visible
      .map((r) => {
@@ -240,7 +234,7 @@ function render() {
        return `<tr><td><button class="member-button" data-member="${esc(r.member_id)}"><span class="avatar ${r.priority === "Red" ? "rose" : r.priority === "Yellow" ? "sand" : "slate"}">${esc(initials(r.member.full_name))}</span><span><strong>${esc(r.member.full_name)}</strong><small>${esc(r.member.membership)}</small></span></button></td><td><span class="priority-pill ${r.priority.toLowerCase()}"><span class="risk-dot ${r.priority.toLowerCase()}"></span>${r.priority}</span><small class="signal">${esc(r.signal)}</small></td><td>${spark(r.sequence)}<small class="session-label">${r.s7} sessions this week</small></td><td><span class="status-label ${r.suppressed ? "done" : ""}">${icon(r.suppressed ? "circle-check" : r.status === "open" ? "circle-dashed" : "message-circle")}${STATUS[r.status]}</span><small class="status-detail">${r.suppressed ? "Through " + fmt(r.last.suppress_through) : r.reopened ? "Exemption expired · review again" : event?.follow_up_on ? "Follow up " + fmt(event.follow_up_on) : author ? esc(author) : r.history.length ? r.history.length + " note" + (r.history.length === 1 ? "" : "s") : "No outreach recorded"}</small></td><td><button class="row-open" data-member="${esc(r.member_id)}" aria-label="Open ${esc(r.member.full_name)}">${icon("arrow-up-right")}</button></td></tr>`;
      })
      .join("") ||
-   `<tr><td colspan="5"><div class="empty">${icon("check-check")}<h3>${search ? "No members match your search" : "You’re clear here"}</h3><p>${search ? "Try another name or risk signal." : view === "queue" ? "Every case in this view has been handled." : "There are no cases in this view for the selected week."}</p></div></td></tr>`
+   `<tr><td colspan="5"><div class="empty">${icon("check-check")}<h3>${search ? "No members match your search" : !store.data.weeks.length ? "Import your first weekly report" : "You’re clear here"}</h3><p>${search ? "Try another name or risk signal." : !store.data.weeks.length ? "An administrator can choose Import week and select the four Clubworx CSV reports." : view === "queue" ? "Every case in this view has been handled." : "There are no cases in this view for the selected week."}</p></div></td></tr>`
  }</tbody></table></div>
  <footer class="table-footer"><span>${visible.length} members shown · report dated ${store.data.weeks.length ? fmt(week) : "—"}</span><span>${lastSync ? "Updated " + new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", timeZone: "Australia/Brisbane" }).format(lastSync) : "Weekly attendance snapshot"}</span></footer></section>
  <p class="scope-note">${icon("info")} Staff notes change the outreach queue. Attendance and risk signals remain as recorded in the weekly report.</p>
@@ -406,51 +400,23 @@ function openMember(id) {
   };
 }
 function openImport() {
-  const d = $("#import-dialog");
-  importPayload = null;
-  d.innerHTML = `<div class="modal-heading"><h2 id="import-title">Import a weekly report</h2><button id="close-import" class="icon-button" aria-label="Close import">${icon("x")}</button></div><p>Upload the JSON produced by the repository’s outreach exporter. Existing notes and exemptions carry forward; reimporting replaces only that week’s risk snapshot.</p>${store.demo ? '<div class="exemption-notice">Imports are enabled after Supabase is connected. This sample workspace contains fictional records.</div>' : `<label class="upload-zone">${icon("upload-cloud")}<strong>Choose weekly outreach JSON</strong><input type="file" id="import-file" accept=".json,application/json"></label><div id="import-summary"></div><p id="import-error" class="form-error" role="alert"></p><button class="button primary" id="confirm-import" disabled>Import reviewed week</button>`}`;
-  d.showModal();
-  decorate();
-  $("#close-import").onclick = () => d.close();
-  if (store.demo) return;
-  $("#import-file").onchange = async (e) => {
-    try {
-      const f = e.target.files[0];
-      if (!f) return;
-      if (f.size > 10 * 1024 * 1024) throw Error("Export must be under 10 MB.");
-      importPayload = validateImport(JSON.parse(await f.text()));
-      const review = importPayload.identity_mode !== "clubworx-contact-id";
-      $("#import-summary").innerHTML =
-        `<strong>${importPayload.members.length} risk members · ${fmt(importPayload.week)}</strong><p>${esc(importPayload.source_label || "Weekly export")}</p>${review ? '<div class="identity-warning">This export uses provisional name identities. A name change or two people sharing a name can attach history incorrectly. Prefer Clubworx contact IDs.</div><label class="checkbox-label"><input type="checkbox" id="confirm-identity"> I have reviewed the member identities for this import.</label>' : ""}`;
-      $("#confirm-import").disabled = review;
-      if (review)
-        $("#confirm-identity").onchange = (e) =>
-          ($("#confirm-import").disabled = !e.target.checked);
-      $("#import-error").textContent = "";
-    } catch (err) {
-      importPayload = null;
-      $("#confirm-import").disabled = true;
-      $("#import-error").textContent = err.message;
-    }
-  };
-  $("#confirm-import").onclick = async () => {
-    if (!importPayload) return;
-    const b = $("#confirm-import");
-    b.disabled = true;
-    b.textContent = "Importing…";
-    try {
-      await store.import(importPayload);
-      week = importPayload.week;
-      d.close();
+  const workspace = store;
+  showImport({
+    store: workspace,
+    decorate,
+    esc,
+    fmt,
+    icon,
+    onImported: (importedWeek) => {
+      if (store !== workspace) return;
+      week = importedWeek;
+      lastSync = new Date();
       render();
       toast("Weekly report imported. Staff history preserved.");
-    } catch (err) {
-      $("#import-error").textContent = err.message;
-      b.disabled = false;
-      b.textContent = "Import reviewed week";
-    }
-  };
+    },
+  });
 }
+
 async function refresh(silent = false) {
   if (refreshing || !store) return;
   if (selected || $("#import-dialog")?.open) {

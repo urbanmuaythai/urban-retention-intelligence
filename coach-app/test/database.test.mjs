@@ -25,6 +25,15 @@ test("database access, atomic imports, notes, concurrency and history", async (t
   await db.exec(
     `insert into staff values('${admin}','Admin','admin',true),('${coach}','Coach','coach',true);`,
   );
+  await db.exec(
+    await readFile(
+      new URL(
+        "../../supabase/migrations/20261027010958_csv_weekly_import.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
   const login = async (id) => {
     await db.exec("reset role;");
     await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id]);
@@ -181,6 +190,80 @@ test("database access, atomic imports, notes, concurrency and history", async (t
         db.query("select * from members"),
         /permission denied/,
       );
+    },
+  );
+  await t.test(
+    "CSV snapshots save healthy people, allow zero risks and preserve staff notes",
+    async () => {
+      await login(admin);
+      const csvPayload = {
+        ...payload,
+        members: [{ ...member, priority: "Review" }],
+        attendance_snapshot: [
+          { member_id: member.member_id, s7: 0, s30: 2 },
+          { member_id: "healthy-person", s7: 4, s30: 16 },
+        ],
+        import_summary: { eligible: 2 },
+      };
+      await importWeek(csvPayload);
+      const report = (
+        await db.query(
+          "select attendance_snapshot,import_summary from weekly_reports where week='2026-10-26'",
+        )
+      ).rows[0];
+      assert.equal(report.attendance_snapshot.length, 2);
+      assert.equal(report.import_summary.eligible, 2);
+      await importWeek({ ...csvPayload, week: "2026-11-09", members: [] });
+      assert.equal(
+        (
+          await db.query(
+            "select source_count from weekly_reports where week='2026-11-09'",
+          )
+        ).rows[0].source_count,
+        0,
+      );
+      assert.equal(
+        (await db.query("select count(*)::int n from outreach_events")).rows[0]
+          .n,
+        1,
+      );
+      for (const bad of [
+        [],
+        [
+          { member_id: "duplicate", s7: 0, s30: 2 },
+          { member_id: "duplicate", s7: 0, s30: 2 },
+        ],
+        [{ member_id: member.member_id, s7: 8, s30: 2 }],
+        [{ member_id: member.member_id, s7: 0.5, s30: 2 }],
+      ]) {
+        await assert.rejects(
+          importWeek({ ...csvPayload, attendance_snapshot: bad }),
+        );
+      }
+      await assert.rejects(
+        importWeek({ ...csvPayload, members: [{ ...member, s7: 1 }] }),
+        /match the attendance snapshot/,
+      );
+      assert.equal(
+        (
+          await db.query(
+            "select attendance_snapshot from weekly_reports where week='2026-10-26'",
+          )
+        ).rows[0].attendance_snapshot.length,
+        2,
+      );
+      await login(outsider);
+      assert.equal(
+        (await db.query("select attendance_snapshot from weekly_reports")).rows
+          .length,
+        0,
+      );
+      await assert.rejects(
+        importWeek(csvPayload),
+        /Administrator access required/,
+      );
+      await db.exec("reset role; set role anon;");
+      await assert.rejects(importWeek(csvPayload), /permission denied/);
     },
   );
   await db.close();

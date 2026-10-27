@@ -2200,3 +2200,69 @@ tbody tr:hover {
     font-size: 34px;
   }
 }
+.import-dialog {
+  width: 760px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+.import-hint,
+.import-date,
+#csv-files,
+#csv-targets {
+  margin: 16px 0;
+}
+#csv-files li,
+#import-summary li {
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+#csv-targets p,
+.import-hint {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+#csv-targets summary,
+.advanced-import summary {
+  cursor: pointer;
+  font-size: 12px;
+  padding: 12px 0;
+}
+.target-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.target-list small {
+  display: block;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 6px 0;
+  font-weight: 400;
+}
+.advanced-import {
+  margin: 16px 0;
+}
+.import-preview {
+  overflow-x: auto;
+  max-height: 280px;
+  margin: 16px 0;
+}
+.import-preview table {
+  min-width: 500px;
+}
+.import-preview td {
+  font-size: 12px;
+  white-space: normal;
+}
+.import-date {
+  max-width: 260px;
+}
+.priority-pill.review {
+  background: #273657;
+  color: #b8caff;
+}
+.risk-dot.review {
+  background: #a1b8f4;
+}
