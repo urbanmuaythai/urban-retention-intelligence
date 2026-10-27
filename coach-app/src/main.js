@@ -34,6 +34,12 @@ import "@fontsource/inter/latin-800.css";
 import "@fontsource/bebas-neue/latin-400.css";
 import urbanLogo from "./assets/urban-muaythai-logo.png";
 import "./style.css";
+import {
+  attendanceLabel,
+  riskExplanation,
+  installAttendanceTooltips,
+} from "./attendance-ui.js";
+const hideAttendanceTooltip = installAttendanceTooltips();
 import { showImport } from "./import-dialog.js";
 import {
   Workspace,
@@ -145,15 +151,24 @@ function filtered() {
     );
   });
 }
-function spark(sequence) {
-  const values = sequence?.slice(-8) || [];
+function spark(risk) {
+  const values = risk.sequence?.slice(-8) || [];
   const max = Math.max(4, ...values.filter((v) => v !== null));
   const dates =
     store?.data?.weeks
       .find((w) => w.week === week)
       ?.import_summary?.sequenceDates?.slice(-8) || [];
-  return `<div class="spark" aria-label="Weekly sessions: ${esc(values.map((x) => (x === null ? "missing" : x)).join(", "))}">${values.map((v, i) => `<span style="height:${v === null ? 4 : Math.max(5, (28 * v) / max)}px" class="${i === values.length - 1 ? "last" : ""} ${v === null ? "missing" : ""}" title="${dates[i] ? esc(dates[i]) + ": " : ""}${v === null ? "Missing snapshot" : v + " sessions"}"></span>`).join("")}</div>`;
+  const reason = riskExplanation(risk, dates);
+  return `<div class="spark" role="group" aria-label="Weekly attendance snapshots">${values
+    .map((value, i) => {
+      const label = dates[i]
+        ? "Snapshot as of " + fmt(dates[i])
+        : "Weekly snapshot " + (i + 1);
+      return `<button type="button" class="attendance-point" data-date="${esc(dates[i] || "")}" data-snapshot-label="${esc(label)}" data-attendance-label="${esc(attendanceLabel(value))}" data-reason="${esc(reason)}" aria-label="${esc(label + ": " + attendanceLabel(value))}"><span class="attendance-bar ${i === values.length - 1 ? "last" : ""} ${value === null ? "missing" : ""}" style="height:${value === null ? 4 : Math.max(5, (28 * value) / max)}px" aria-hidden="true"></span></button>`;
+    })
+    .join("")}</div>`;
 }
+
 function initials(name) {
   return name
     .split(" ")
@@ -162,6 +177,7 @@ function initials(name) {
     .join("");
 }
 function render() {
+  hideAttendanceTooltip();
   const focus = document.activeElement?.id;
   const cursor = focus === "search" ? $("#search").selectionStart : null;
   const all = rows(),
@@ -238,7 +254,7 @@ function render() {
        const author = store.data.staff.find(
          (s) => s.id === event?.assigned_to,
        )?.display_name;
-       return `<tr><td><button class="member-button" data-member="${esc(r.member_id)}"><span class="avatar ${r.priority === "Red" ? "rose" : r.priority === "Yellow" ? "sand" : "slate"}">${esc(initials(r.member.full_name))}</span><span><strong>${esc(r.member.full_name)}</strong><small>${esc(r.member.membership)}</small></span></button></td><td><span class="priority-pill ${r.priority.toLowerCase()}"><span class="risk-dot ${r.priority.toLowerCase()}"></span>${r.priority}</span><small class="signal">${esc(r.signal)}</small></td><td>${spark(r.sequence)}<small class="session-label">${r.s7} sessions this week</small></td><td><span class="status-label ${r.suppressed ? "done" : ""}">${icon(r.suppressed ? "circle-check" : r.status === "open" ? "circle-dashed" : "message-circle")}${STATUS[r.status]}</span><small class="status-detail">${r.suppressed ? "Through " + fmt(r.last.suppress_through) : r.reopened ? "Exemption expired · review again" : event?.follow_up_on ? "Follow up " + fmt(event.follow_up_on) : author ? esc(author) : r.history.length ? r.history.length + " note" + (r.history.length === 1 ? "" : "s") : "No outreach recorded"}</small></td><td><button class="row-open" data-member="${esc(r.member_id)}" aria-label="Open ${esc(r.member.full_name)}">${icon("arrow-up-right")}</button></td></tr>`;
+       return `<tr><td><button class="member-button" data-member="${esc(r.member_id)}"><span class="avatar ${r.priority === "Red" ? "rose" : r.priority === "Yellow" ? "sand" : "slate"}">${esc(initials(r.member.full_name))}</span><span><strong>${esc(r.member.full_name)}</strong><small>${esc(r.member.membership)}</small></span></button></td><td><span class="priority-pill ${r.priority.toLowerCase()}"><span class="risk-dot ${r.priority.toLowerCase()}"></span>${r.priority}</span><small class="signal">${esc(r.signal)}</small></td><td>${spark(r)}<small class="session-label">${r.s7} sessions this week</small></td><td><span class="status-label ${r.suppressed ? "done" : ""}">${icon(r.suppressed ? "circle-check" : r.status === "open" ? "circle-dashed" : "message-circle")}${STATUS[r.status]}</span><small class="status-detail">${r.suppressed ? "Through " + fmt(r.last.suppress_through) : r.reopened ? "Exemption expired · review again" : event?.follow_up_on ? "Follow up " + fmt(event.follow_up_on) : author ? esc(author) : r.history.length ? r.history.length + " note" + (r.history.length === 1 ? "" : "s") : "No outreach recorded"}</small></td><td><button class="row-open" data-member="${esc(r.member_id)}" aria-label="Open ${esc(r.member.full_name)}">${icon("arrow-up-right")}</button></td></tr>`;
      })
      .join("") ||
    `<tr><td colspan="5"><div class="empty">${icon("check-check")}<h3>${search ? "No members match your search" : !store.data.weeks.length ? "Import your first weekly report" : "You’re clear here"}</h3><p>${search ? "Try another name or risk signal." : !store.data.weeks.length ? "An administrator can choose Import week and select the four Clubworx CSV reports." : view === "queue" ? "Every case in this view has been handled." : "There are no cases in this view for the selected week."}</p></div></td></tr>`
@@ -310,7 +326,7 @@ function openMember(id) {
   if (!r) return;
   selected = id;
   const dialog = $("#member-dialog");
-  dialog.innerHTML = `<header class="drawer-top"><span>MEMBER CHECK-IN</span><button type="button" class="icon-button" id="close-member" aria-label="Close member">${icon("x")}</button></header><div class="drawer-body"><div class="member-intro"><span class="avatar large rose">${esc(initials(r.member.full_name))}</span><div><h2 id="member-title">${esc(r.member.full_name)}</h2><p>${esc(r.member.membership)}</p></div></div><div class="risk-callout"><span class="priority-pill ${r.priority.toLowerCase()}">${r.priority} risk</span><strong>${esc(r.signal)}</strong><span>${r.s7} sessions in 7 days · ${r.s30} in 30 days</span>${spark(r.sequence)}</div>
+  dialog.innerHTML = `<header class="drawer-top"><span>MEMBER CHECK-IN</span><button type="button" class="icon-button" id="close-member" aria-label="Close member">${icon("x")}</button></header><div class="drawer-body"><div class="member-intro"><span class="avatar large rose">${esc(initials(r.member.full_name))}</span><div><h2 id="member-title">${esc(r.member.full_name)}</h2><p>${esc(r.member.membership)}</p></div></div><div class="risk-callout"><span class="priority-pill ${r.priority.toLowerCase()}">${r.priority} risk</span><strong>${esc(r.signal)}</strong><span>${r.s7} sessions in 7 days · ${r.s30} in 30 days</span><p class="risk-explanation">${esc(riskExplanation(r, store.data.weeks.find((w) => w.week === week)?.import_summary?.sequenceDates || []))}</p><div class="attendance-chart"><small>WEEKLY SNAPSHOTS · HOVER OR TAP A BAR</small>${spark(r)}</div></div>
  ${r.suppressed ? `<div class="exemption-notice">${icon("circle-check")}<span>Excluded from the action queue through the report dated <strong>${fmt(r.last.suppress_through)}</strong>. Choose “Reopen” to bring this case back.</span></div>` : ""}
  ${r.member.phone ? `<a class="phone-link" href="tel:${esc(r.member.phone.replace(/[^+0-9]/g, ""))}">${icon("phone")} ${esc(r.member.phone)}</a>` : ""}
  <div class="drawer-section-heading"><h3>Record your reach-out</h3><span>Week of ${fmt(week)}</span></div><form id="note-form"><label>What happened?<textarea id="note" required maxlength="4000" rows="4" placeholder="How is training going? What’s the barrier? Agree one next step…"></textarea></label><div class="form-two"><label>Outcome<select id="outcome"><option value="">Add note only</option><option value="contacted">Contacted</option><option value="booked">Session booked</option><option value="completed">Handled · exclude temporarily</option><option value="snoozed">Exempt / pause outreach</option><option value="open">Reopen · needs outreach</option></select></label><label>Assign to<select id="assignee"><option value="">Unassigned</option>${store.data.staff
@@ -492,6 +508,7 @@ async function start(demo) {
   }
 }
 function lockWorkspace() {
+  hideAttendanceTooltip();
   authEpoch++;
   const previous = store;
   store = null;

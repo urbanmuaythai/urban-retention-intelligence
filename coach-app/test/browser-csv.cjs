@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
   const { fixture, filesFor } = await import("./csv-fixtures.mjs");
   const browser = await chromium.launch({ channel: "msedge", headless: true });
   try {
-    const page = await browser.newPage();
+    const page = await browser.newPage({ hasTouch: true });
     const errors = [];
     let imported = null;
     const baselines = [];
@@ -233,9 +233,61 @@ const assert = require("node:assert/strict");
       /Historical weekly summaries linked/,
     );
     assert.match(
-      await page.locator(".spark span").nth(4).getAttribute("title"),
+      await page.locator(".attendance-point").nth(4).getAttribute("data-date"),
       /2026-10-19/,
     );
+    await page.locator("tbody .row-open").first().click();
+    await page
+      .locator("#note")
+      .fill("Keep this draft while checking attendance.");
+    assert.match(
+      await page.locator(".risk-explanation").innerText(),
+      /weekly snapshots/,
+    );
+    const point = page.locator("#member-dialog .attendance-point").nth(4);
+    await point.hover();
+    await page.getByRole("tooltip").waitFor({ state: "visible" });
+    assert.match(await page.getByRole("tooltip").innerText(), /19 Oct 2026/);
+    assert.match(
+      await page.getByRole("tooltip").innerText(),
+      /0 attended sessions/,
+    );
+    assert.match(
+      await page.getByRole("tooltip").innerText(),
+      /Current report: Red/,
+    );
+    await page.mouse.move(0, 0);
+    await page.getByRole("tooltip").waitFor({ state: "hidden" });
+    await point.focus();
+    await page.getByRole("tooltip").waitFor({ state: "visible" });
+    assert.equal(
+      await point.getAttribute("aria-describedby"),
+      "attendance-tooltip",
+    );
+    await page.keyboard.press("Escape");
+    await page.getByRole("tooltip").waitFor({ state: "hidden" });
+    assert.equal(
+      await page.locator("#member-dialog").evaluate((d) => d.open),
+      true,
+    );
+    await point.tap();
+    await page.getByRole("tooltip").waitFor({ state: "visible" });
+    const bounds = await page.getByRole("tooltip").boundingBox();
+    assert.ok(
+      bounds.x >= 0 && bounds.x + bounds.width <= 390,
+      "Tooltip fits mobile viewport",
+    );
+    require("node:fs").mkdirSync("test-results", { recursive: true });
+    await page.screenshot({
+      path: "test-results/attendance-tooltip-mobile.png",
+    });
+    await page.locator("#note").tap();
+    await page.getByRole("tooltip").waitFor({ state: "hidden" });
+    assert.equal(
+      await page.locator("#note").inputValue(),
+      "Keep this draft while checking attendance.",
+    );
+    await page.locator("#close-member").click();
     assert.deepEqual(errors, []);
     console.log(
       "PASS: production CSV picker, preview, identity review, stale-preview invalidation, mobile dialog, SDK import and Review filter (mocked Supabase; no live data written)",

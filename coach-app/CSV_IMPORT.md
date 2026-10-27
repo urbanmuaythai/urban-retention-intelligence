@@ -49,3 +49,9 @@ The preparation helper `scripts/prepare_attendance_baselines.py` joins historica
 Archive-backed comparisons also check available suspension intervals and current membership start dates. Overlapping paused windows and incomplete first membership weeks remain unknown rather than becoming false zero streaks. A recent same-week archived snapshot can supply verified engagement context, but does not replace today's attendance counts or masquerade as a preceding week.
 
 These are weekly summary observations, not individual attendance events. The proposed attendance-event export is still needed for a full per-session timeline. Existing source CSVs, archives, matching audits, backups and generated payloads remain private and outside the static build. Staff notes, exemptions and member revisions are not reset by syncing attendance.
+
+## Attendance details in the staff workspace
+
+Each attendance bar supports hover, keyboard focus and tap. Its tooltip names the actual snapshot date, the session count for that reported seven-day snapshot, and the reason for the member's current report flag. Missing observations are labelled unavailable rather than zero. The member card also shows the reason as visible text.
+
+Sharp-stop explanations distinguish a previous snapshot count from an average of earlier known snapshots. Repeated-zero reasons refer to weekly observations. Tooltips do not claim that the member had the same risk category in the historical week being inspected. Escape dismisses the tooltip first; tapping elsewhere dismisses a pinned tooltip. Attendance inspection does not write a note or change risk classification.

@@ -2296,3 +2296,84 @@ tbody tr:hover {
   flex-shrink: 0;
   width: 20px;
 }
+.spark {
+  gap: 2px;
+  height: 36px;
+}
+.attendance-point {
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 36px;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+.attendance-point:hover {
+  background: #303959;
+}
+.attendance-point:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.spark .attendance-bar {
+  display: block;
+  width: 6px;
+  pointer-events: none;
+}
+.risk-callout .spark {
+  position: static;
+  margin-top: 6px;
+}
+.risk-explanation {
+  color: #c5cde7;
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 12px 0;
+}
+.attendance-chart {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+.attendance-chart > small {
+  font-size: 9px;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+}
+#attendance-tooltip {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  width: 320px;
+  max-width: calc(100vw - 16px);
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid #586b9e;
+  border-radius: 10px;
+  background: #10172e;
+  color: #f0f3ff;
+  box-shadow: 0 12px 32px #0007;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  line-height: 1.65;
+  pointer-events: none;
+  z-index: 10000;
+}
+#attendance-tooltip strong {
+  display: block;
+  color: var(--gold);
+  font-size: 12px;
+}
+#attendance-tooltip p {
+  margin: 7px 0 0;
+}
+#attendance-tooltip p:last-child {
+  border-top: 1px solid #3b4768;
+  padding-top: 8px;
+  color: #c9d3ed;
+}
