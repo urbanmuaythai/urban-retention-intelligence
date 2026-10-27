@@ -2,7 +2,7 @@
 
 Production entry: https://urbanmuaythai.github.io/urban-retention-intelligence/member-care/
 
-Published from the existing app source on branch `codex/coach-outreach`, commit `a060e4f292a060baa9bf22e964fd800f03bfafcb`.
+Published from the existing app source on branch `codex/coach-outreach`, commit `e8ed838abc7911f652c34f18caeb11cb90f9beb9`.
 
 Build from `coach-app` using Node 22 or later and the locked dependencies:
 
@@ -30,3 +30,6 @@ Attendance inspection: bars support hover, keyboard focus and tap with a top-lay
 
 
 Attendance stages: eight dated weekly observations now support Early warning, At risk, Disengaged, Long absence and Extended absence, with Monitoring and Needs context for other cases. A separate stage filter complements risk priority. Null history breaks zero runs; archived snapshots are labelled observations. Current report history was expanded in a guarded transaction for 269 cases with unchanged priorities/current counts and both existing outreach events verified unchanged. Unit/integration tests: 44 passed. Mobile browser tests cover Extended absence, filtering, tooltip interactions and preserving draft notes.
+
+
+Drive pickup: the verified Clubworx Exports folder feeds a separate Codex desktop heartbeat every 30 minutes. It is not a cloud-independent worker: this computer, Codex and the Drive/Supabase connections must remain available. The tested private runner accepts only four fresh configured reports with a common source date within 30 minutes, reuses validated conversion/history, skips duplicates, holds new membership targets and preserves notes through a guarded import. The initial live Drive import matched 269 reviewed cases and retained both existing notes; repeat preparation reported unchanged. The app shows the last Drive import source/time. Direct CSV selection automatically prepares a preview while retaining review before saving. Validation: 48 tests and the production mobile CSV browser flow passed. See scripts/DRIVE_MEMBER_CARE.md on the source branch for the complete operating workflow.
