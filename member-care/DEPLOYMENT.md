@@ -2,7 +2,7 @@
 
 Production entry: https://urbanmuaythai.github.io/urban-retention-intelligence/member-care/
 
-Published from the existing app source on branch `codex/coach-outreach`, commit `e8ed838abc7911f652c34f18caeb11cb90f9beb9`.
+Published from the existing app source on branch `codex/coach-outreach`, commit `9fb9a5e34209b9fa88bcc75fa031ed25eb8722f8`.
 
 Build from `coach-app` using Node 22 or later and the locked dependencies:
 
@@ -33,3 +33,6 @@ Attendance stages: eight dated weekly observations now support Early warning, At
 
 
 Drive pickup: the verified Clubworx Exports folder feeds a separate Codex desktop heartbeat every 30 minutes. It is not a cloud-independent worker: this computer, Codex and the Drive/Supabase connections must remain available. The tested private runner accepts only four fresh configured reports with a common source date within 30 minutes, reuses validated conversion/history, skips duplicates, holds new membership targets and preserves notes through a guarded import. The initial live Drive import matched 269 reviewed cases and retained both existing notes; repeat preparation reported unchanged. The app shows the last Drive import source/time. Direct CSV selection automatically prepares a preview while retaining review before saving. Validation: 48 tests and the production mobile CSV browser flow passed. See scripts/DRIVE_MEMBER_CARE.md on the source branch for the complete operating workflow.
+
+
+Weekly Reporting (28 October 2026): a read-only sidebar tab shows Red flagged/contacted/no-contact/coverage, priority breakdowns and selectable weekly history using saved reports and authorised notes already loaded by the app. Unique members count once per report week. Contacted means Contacted or Session booked; notes, Handled-only and Exempt-only are excluded from contact evidence. Valid exemptions remain separate; earlier contact does not roll into the next week. Latest saved cohorts are used, so reimports may change totals. No schema changes or live member writes were needed. Verified with 52 automated tests plus local and hosted browser workflows covering empty reports, deduplicated contacts, week switching, Red outreach navigation and mobile layout.
