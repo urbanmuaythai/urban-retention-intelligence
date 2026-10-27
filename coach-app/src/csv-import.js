@@ -1,4 +1,5 @@
 import { addDays, norm, validateImport } from "./domain.js";
+import { resolveHistory, archivedEngagement } from "./history.js";
 
 const schemas = {
   attendance: [
@@ -206,7 +207,7 @@ export function membershipTargets(reports) {
     });
 }
 
-function classify(s7, s30, sequence, target, engagement) {
+function classify(s7, s30, sequence, target, engagement, archived = false) {
   const prior = sequence.slice(0, -1),
     known = prior.filter((x) => x !== null);
   const prev = prior.at(-1),
@@ -220,7 +221,12 @@ function classify(s7, s30, sequence, target, engagement) {
     streak++;
   }
   if (s7 === 0 && streak >= 2)
-    return ["Red", `Ghosting · ${streak} straight zero weeks`];
+    return [
+      "Red",
+      archived
+        ? `Repeated zero · ${streak} weekly snapshots`
+        : `Ghosting · ${streak} straight zero weeks`,
+    ];
   if (s7 === 0 && ((prev ?? 0) >= 2 || average >= 2))
     return ["Red", `Sharp stop · ${prev ?? average.toFixed(1)} → 0`];
   if (s7 === 0 && s30 > 0) return ["Yellow", `New zero · ${s30} visits in 30d`];
@@ -250,6 +256,7 @@ export function convertReports(
   targets,
   history = [],
   asOf = week,
+  baselines = [],
 ) {
   date(week, "Report date");
   if (new Date(week + "T12:00:00Z").getUTCDay() !== 1)
@@ -370,12 +377,16 @@ export function convertReports(
     throw Error(
       "Attendance and Active Memberships do not cover the same people and memberships. Include zero-attendance members and export both reports together.",
     );
-  const suspended = new Set();
+  const suspended = new Set(),
+    suspensionIntervals = new Map();
   for (const row of reports.suspensions.rows) {
     const start = date(row["Suspension Starts"], "Suspension start"),
       end = date(row["Suspension Ends"], "Suspension end", true);
     if (end && end < start) throw Error("Suspension ends before it starts.");
     flag(row["Suspension Current?"], "Suspension Current?");
+    if (!suspensionIntervals.has(row["Contact ID"]))
+      suspensionIntervals.set(row["Contact ID"], []);
+    suspensionIntervals.get(row["Contact ID"]).push({ start, end });
 
     if (start <= asOf && (!end || end >= asOf))
       suspended.add(row["Contact ID"]);
@@ -410,21 +421,15 @@ export function convertReports(
         effectiveCancellations++;
     }
   }
-  const historical = new Map(
-    history
-      .filter((w) => w.week < week)
-      .map((w) => [
-        w.import_summary?.asOf || w.week,
-
-        new Map((w.attendance_snapshot || []).map((r) => [r.member_id, r.s7])),
-      ]),
-  );
+  const historical = resolveHistory(week, asOf, history, baselines);
   const members = [],
     snapshot = [];
   let held = 0,
     statusHeld = 0,
     noMembership = 0,
-    noHistory = 0;
+    noHistory = 0,
+    archivedMembers = 0,
+    engagementRecovered = 0;
   for (const [id, plans] of roster) {
     if (!plans.length) {
       noMembership++;
@@ -457,11 +462,34 @@ export function convertReports(
       : null;
     const a = attendance.get(id),
       member_id = "clubworx:" + id;
-    const sequence = Array.from(
-      { length: 5 },
-      (_, i) =>
-        historical.get(addDays(asOf, (i - 5) * 7))?.get(member_id) ?? null,
-    ).concat(a.s7);
+    const membershipStart = currentPlans
+      .map((p) => p["Membership Start Date"])
+      .sort()[0];
+    const sequence = historical
+      .map((slot) => {
+        const count = slot.rows.get(member_id)?.s7 ?? null;
+        if (membershipStart > addDays(asOf, -6)) return null;
+        if (count === 0 && membershipStart > addDays(slot.date, -6))
+          return null;
+        if (
+          (suspensionIntervals.get(id) || []).some(
+            (p) =>
+              p.start <= slot.date &&
+              (!p.end || p.end >= addDays(slot.date, -6)),
+          )
+        )
+          return null;
+        return count;
+      })
+      .concat(a.s7);
+    const usesArchive = historical.some(
+      (slot, i) => slot.archived && sequence[i] !== null,
+    );
+    if (usesArchive) archivedMembers++;
+    const engagement = a.engagement
+      ? null
+      : archivedEngagement(member_id, asOf, currentPlans, baselines);
+    if (engagement) engagementRecovered++;
     if (sequence.slice(0, -1).every((x) => x === null)) noHistory++;
     snapshot.push({ member_id, s7: a.s7, s30: a.s30 });
     const classification = classify(
@@ -469,7 +497,8 @@ export function convertReports(
       a.s30,
       sequence,
       target,
-      a.engagement,
+      a.engagement || engagement?.value || "",
+      usesArchive,
     );
     if (classification)
       members.push({
@@ -511,6 +540,23 @@ export function convertReports(
     futureStartRows: futureStarts,
     noEligibleMembership: noMembership,
     noPriorWeeklyHistory: noHistory,
+    historicalSync: {
+      archivedMembers,
+      engagementRecovered,
+      baselineWeeks: baselines.length,
+      sourceRange: baselines.length
+        ? [
+            baselines.map((b) => b.as_of).sort()[0],
+            baselines
+              .map((b) => b.as_of)
+              .sort()
+              .at(-1),
+          ]
+        : [],
+      comparisonMode:
+        "Exact rolling cutoffs preferred; archived Monday summaries may differ by one day and retain their original dates.",
+    },
+    sequenceDates: historical.map((slot) => slot.date).concat(asOf),
     review: members.filter((m) => m.priority === "Review").length,
     flaggedCancellations,
     effectiveCancellations,

@@ -87,17 +87,19 @@ export class Workspace {
       }
       return rows;
     };
-    const [weeks, members, risks, events, team] = await Promise.all([
+    const [weeks, members, risks, events, team, baselines] = await Promise.all([
       readAll("weekly_reports", "*", "week"),
       readAll("members", "*", "id"),
       readAll("weekly_risks", "*", "member_id"),
       readAll("outreach_events", "*", "sequence"),
       readAll("staff", "id,display_name,role,active", "id"),
+      readAll("attendance_baselines", "*", "as_of"),
     ]);
     const map = new Map(members.map((m) => [m.id, m]));
     const names = new Map(team.map((m) => [m.id, m.display_name]));
     this.data = {
       weeks,
+      baselines,
       members,
       risks: risks.map((r) => ({ ...r, member: map.get(r.member_id) })),
       events: events.map((e) => ({

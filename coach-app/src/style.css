@@ -2279,3 +2279,20 @@ tbody tr:hover {
   font-size: 12px;
   line-height: 1.7;
 }
+
+.history-notice {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  background: #202b45;
+  border: 1px solid #3d5077;
+  border-radius: 10px;
+  color: #c5d4ef;
+  font-size: 12px;
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+.history-notice svg {
+  flex-shrink: 0;
+  width: 20px;
+}

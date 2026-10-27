@@ -7,6 +7,7 @@ const assert = require("node:assert/strict");
     const page = await browser.newPage();
     const errors = [];
     let imported = null;
+    const baselines = [];
     page.on("pageerror", (e) => errors.push(e.message));
     const uid = "00000000-0000-4000-8000-000000000001";
     const jwt =
@@ -47,6 +48,7 @@ const assert = require("node:assert/strict");
         imported = JSON.parse(req.postData()).p_payload;
         body = imported.members.length;
       } else if (url.pathname.endsWith("/staff")) body = [staff];
+      else if (url.pathname.endsWith("/attendance_baselines")) body = baselines;
       else if (imported && url.pathname.endsWith("/weekly_reports"))
         body = [
           {
@@ -185,6 +187,54 @@ const assert = require("node:assert/strict");
     assert.match(
       await page.locator(".table-footer").innerText(),
       /data as of 27 Oct 2026/,
+    );
+    // Cloud history must survive a refresh and be reused by a later CSV import.
+    baselines.push({
+      as_of: "2026-10-19",
+      metadata: { kind: "archived-weekly-summary" },
+      snapshot: [
+        {
+          member_id: "clubworx:123",
+          s7: 0,
+          s30: 4,
+          membership: "Unlimited",
+          engagement: "Fringe",
+        },
+      ],
+    });
+    const archiveRead = page.waitForResponse((r) =>
+      r.url().includes("/rest/v1/attendance_baselines"),
+    );
+    await page.locator("#refresh").click();
+    await archiveRead;
+    await page.locator("#import-open").click();
+    const zeroRows = fixture({ s7: 0, s30: 4 });
+    const zeroFiles = filesFor(zeroRows).map((f, i) => ({
+      name: `new_export_${i}.csv`,
+      mimeType: "text/csv",
+      buffer: Buffer.from(f.text),
+    }));
+    await page.locator("#import-csv").setInputFiles(zeroFiles);
+    await page.waitForFunction(
+      () => !document.querySelector("#preview-csv").disabled,
+    );
+    await page.locator("#import-as-of").fill("2026-10-27");
+    await page.locator("#preview-csv").click();
+    assert.match(await page.locator("#import-summary").innerText(), /1 Red/);
+    await page.locator("#confirm-identity").check();
+    await page.locator("#confirm-import").click();
+    await page.waitForFunction(
+      () => !document.querySelector("#import-dialog").open,
+    );
+    await page.getByRole("button", { name: "Red", exact: true }).click();
+    assert.match(await page.locator("tbody").innerText(), /Repeated zero/);
+    assert.match(
+      await page.locator(".history-notice").innerText(),
+      /Historical weekly summaries linked/,
+    );
+    assert.match(
+      await page.locator(".spark span").nth(4).getAttribute("title"),
+      /2026-10-19/,
     );
     assert.deepEqual(errors, []);
     console.log(

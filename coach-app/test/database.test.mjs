@@ -48,6 +48,48 @@ test("database access, atomic imports, notes, concurrency and history", async (t
     await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id]);
     await db.exec("set role authenticated;");
   };
+  await db.exec(
+    await readFile(
+      new URL(
+        "../../supabase/migrations/20261027020548_attendance_baselines.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  await db.query(
+    "insert into attendance_baselines(as_of,source_label,source_sha256,snapshot,imported_by) values('2026-10-19','Fictional archive',$1,$2::jsonb,$3)",
+    [
+      "a".repeat(64),
+      JSON.stringify([{ member_id: "stable-123", s7: 2, s30: 8 }]),
+      admin,
+    ],
+  );
+  await t.test(
+    "archived summaries are staff-readable, hidden from outsiders and not client-writable",
+    async () => {
+      await login(outsider);
+      assert.equal(
+        (await db.query("select * from attendance_baselines")).rows.length,
+        0,
+      );
+      await login(coach);
+      assert.equal(
+        (await db.query("select * from attendance_baselines")).rows.length,
+        1,
+      );
+      await assert.rejects(
+        db.query("delete from attendance_baselines"),
+        /permission denied/,
+      );
+      await db.exec("reset role; set role anon;");
+      await assert.rejects(
+        db.query("select * from attendance_baselines"),
+        /permission denied/,
+      );
+      await db.exec("reset role;");
+    },
+  );
   const member = {
     member_id: "stable-123",
     name: "Fictional Member",
