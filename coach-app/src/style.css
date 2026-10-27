@@ -2377,3 +2377,43 @@ tbody tr:hover {
   padding-top: 8px;
   color: #c9d3ed;
 }
+
+.attendance-stage {
+  display: block;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 4px 8px;
+  border: 1px solid #576387;
+  border-radius: 5px;
+  color: #f1f3ff;
+  background: #252d48;
+  font-size: 11px;
+  font-weight: 700;
+}
+.stage-detail {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  margin-top: 5px;
+}
+.stage-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.stage-filter select {
+  padding: 8px;
+  min-width: 170px;
+}
+.filters {
+  flex-wrap: wrap;
+}
+.risk-callout > .attendance-stage {
+  margin-bottom: 4px;
+}
+.risk-callout > .stage-detail {
+  margin-bottom: 12px;
+}

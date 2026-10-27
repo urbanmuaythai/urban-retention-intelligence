@@ -202,6 +202,9 @@ const assert = require("node:assert/strict");
         },
       ],
     });
+    for (const as_of of ["2026-09-07", "2026-09-14", "2026-09-21", "2026-09-28", "2026-10-05", "2026-10-12"]) {
+      baselines.push({ ...baselines[0], as_of });
+    }
     const archiveRead = page.waitForResponse((r) =>
       r.url().includes("/rest/v1/attendance_baselines"),
     );
@@ -233,9 +236,15 @@ const assert = require("node:assert/strict");
       /Historical weekly summaries linked/,
     );
     assert.match(
-      await page.locator(".attendance-point").nth(4).getAttribute("data-date"),
+      await page.locator(".attendance-point").nth(6).getAttribute("data-date"),
       /2026-10-19/,
     );
+    await page.locator("#attendance-stage").selectOption("Extended absence");
+    assert.match(await page.locator("tbody").innerText(), /Extended absence/);
+    assert.match(await page.locator("tbody").innerText(), /8 consecutive zero-attendance snapshots/);
+    await page.locator("#attendance-stage").selectOption("Disengaged");
+    assert.equal(await page.locator("tbody .row-open").count(), 0);
+    await page.locator("#attendance-stage").selectOption("All");
     await page.locator("tbody .row-open").first().click();
     await page
       .locator("#note")
@@ -244,7 +253,7 @@ const assert = require("node:assert/strict");
       await page.locator(".risk-explanation").innerText(),
       /weekly snapshots/,
     );
-    const point = page.locator("#member-dialog .attendance-point").nth(4);
+    const point = page.locator("#member-dialog .attendance-point").nth(6);
     await point.hover();
     await page.getByRole("tooltip").waitFor({ state: "visible" });
     assert.match(await page.getByRole("tooltip").innerText(), /19 Oct 2026/);

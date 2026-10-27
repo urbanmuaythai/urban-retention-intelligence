@@ -208,7 +208,7 @@ export function membershipTargets(reports) {
 }
 
 function classify(s7, s30, sequence, target, engagement, archived = false) {
-  const prior = sequence.slice(0, -1),
+  const prior = sequence.slice(-6, -1),
     known = prior.filter((x) => x !== null);
   const prev = prior.at(-1),
     prev2 = prior.at(-2),

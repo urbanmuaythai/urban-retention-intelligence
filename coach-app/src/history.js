@@ -12,9 +12,9 @@ function family(name) {
 }
 
 export function resolveHistory(week, asOf, history = [], baselines = []) {
-  return Array.from({ length: 5 }, (_, i) => {
-    const reportWeek = addDays(week, (i - 5) * 7);
-    const expectedCutoff = addDays(asOf, (i - 5) * 7);
+  return Array.from({ length: 7 }, (_, i) => {
+    const reportWeek = addDays(week, (i - 7) * 7);
+    const expectedCutoff = addDays(asOf, (i - 7) * 7);
     const exact = history.find(
       (w) =>
         w.week === reportWeek &&

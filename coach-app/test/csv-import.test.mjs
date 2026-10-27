@@ -65,6 +65,8 @@ test("incomplete context is Review; missing weeks are never fabricated as zero",
     null,
     null,
     null,
+    null,
+    null,
     0,
   ]);
   assert.equal(

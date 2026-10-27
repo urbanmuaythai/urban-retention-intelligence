@@ -39,6 +39,7 @@ import {
   riskExplanation,
   installAttendanceTooltips,
 } from "./attendance-ui.js";
+import { attendanceStage, ATTENDANCE_STAGES } from "./attendance-stage.js";
 const hideAttendanceTooltip = installAttendanceTooltips();
 import { showImport } from "./import-dialog.js";
 import {
@@ -107,6 +108,7 @@ let store,
   week,
   view = "queue",
   priority = "All",
+  stage = "All",
   search = "",
   selected = null,
   busy = false,
@@ -144,12 +146,25 @@ function filtered() {
     return (
       visible &&
       (priority === "All" || r.priority === priority) &&
+      (stage === "All" || attendanceStage(r).label === stage) &&
       (!search ||
-        (r.member.full_name + " " + r.member.membership + " " + r.signal)
+        (
+          r.member.full_name +
+          " " +
+          r.member.membership +
+          " " +
+          r.signal +
+          " " +
+          attendanceStage(r).label
+        )
           .toLowerCase()
           .includes(search.toLowerCase()))
     );
   });
+}
+function stageBadge(risk) {
+  const item = attendanceStage(risk);
+  return `<span class="attendance-stage">${esc(item.label)}</span><small class="stage-detail">${esc(item.detail)}</small>`;
 }
 function spark(risk) {
   const values = risk.sequence?.slice(-8) || [];
@@ -245,8 +260,8 @@ function render() {
  </section>
  <section class="weekly-progress"><span class="progress-symbol">${icon("heart-handshake")}</span><div class="progress-copy"><strong>Make every conversation count</strong><span>${handled} of ${all.length} risk members handled or exempt for this week.</span></div><div class="progress-meter"><div><span>WEEKLY COVERAGE</span><b>${progress}%</b></div><progress value="${handled}" max="${Math.max(1, all.length)}" aria-label="Members handled this week"></progress></div></section>
  <section class="queue-panel"><div class="panel-heading"><div><h2>${view === "handled" ? "Handled cases" : view === "due" ? "Your follow-up list" : view === "all" ? "Weekly member list" : "The reach-out list"} <span class="count-chip">${visible.length}</span></h2><p>${view === "handled" ? "Exemptions expire automatically. The member’s risk history stays intact." : "Start with Red members. Open a member to record your conversation."}</p></div><span class="subtle">${icon("shield-check")} Staff workspace</span></div>
- <div class="filters"><div class="priority-filters" role="group" aria-label="Filter by risk">${["All", "Red", "Yellow", "Watch", "Review"].map((p) => `<button data-priority="${p}" class="filter ${priority === p ? "active" : ""}" aria-pressed="${priority === p}">${p === "All" ? "All priorities" : `<span class="risk-dot ${p.toLowerCase()}"></span>${p}`}</button>`).join("")}</div><label class="search">${icon("search")}<input id="search" placeholder="Search members or signals…" aria-label="Search members" value="${esc(search)}"></label></div>
- <details class="risk-guide"><summary>${icon("info")} How risk priorities work</summary><div class="risk-guide-grid"><article><span class="priority-pill red">Red · priority check-in</span><p>No sessions in the latest snapshot plus two or more consecutive weekly zero snapshots, or a stop from at least two sessions last week / a prior average of at least two.</p></article><article><span class="priority-pill yellow">Yellow · personal check-in</span><p>A new zero week with visits in the last 30 days, a drop of at least two sessions from last week or 1.5 below the prior average, or declining Fringe attendance.</p></article><article><span class="priority-pill watch">Watch · monitor</span><p>Still attending, marked Fringe and below their membership target, with no stronger Red or Yellow signal. Unlimited memberships use a target of four sessions.</p></article><article><span class="priority-pill review">Review · missing context</span><p>Zero attendance without enough weekly history, or below-target attendance without the engagement label needed for Watch. Review these cases before choosing an outreach outcome.</p></article></div><p class="risk-guide-note"><strong>Attendance bands are different:</strong> 0 = Critical; 1 = At Risk; 2 = Low; 3 = Okay; 4+ = Good. Outreach priority also considers history and membership target. The first matching rule wins: Red, then Yellow, then Watch. Missing snapshots are not counted as zero. Current suspensions are held out of outreach.</p><p class="risk-guide-note"><strong>Missing history:</strong> CSV imports keep missing snapshots unknown and flag unresolved cases as Review. They do not assume a Red risk or invent a Fringe engagement label.</p><p class="risk-guide-note">Imported reports supply these priorities; CSV imports calculate them from the selected cutoff and saved weekly attendance. Team notes change outreach status and temporary exemptions; they do not change the recorded risk category.</p></details>
+ <div class="filters"><div class="priority-filters" role="group" aria-label="Filter by risk">${["All", "Red", "Yellow", "Watch", "Review"].map((p) => `<button data-priority="${p}" class="filter ${priority === p ? "active" : ""}" aria-pressed="${priority === p}">${p === "All" ? "All priorities" : `<span class="risk-dot ${p.toLowerCase()}"></span>${p}`}</button>`).join("")}</div><label class="stage-filter">Attendance stage<select id="attendance-stage"><option value="All">All stages</option>${ATTENDANCE_STAGES.map((s) => `<option ${stage === s ? "selected" : ""}>${s}</option>`).join("")}</select></label><label class="search">${icon("search")}<input id="search" placeholder="Search members or signals…" aria-label="Search members" value="${esc(search)}"></label></div>
+ <details class="risk-guide"><summary>${icon("info")} How risk priorities work</summary><div class="risk-guide-grid"><article><span class="priority-pill red">Red · priority check-in</span><p>No sessions in the latest snapshot plus two or more consecutive weekly zero snapshots, or a stop from at least two sessions last week / a prior average of at least two.</p></article><article><span class="priority-pill yellow">Yellow · personal check-in</span><p>A new zero week with visits in the last 30 days, a drop of at least two sessions from last week or 1.5 below the prior average, or declining Fringe attendance.</p></article><article><span class="priority-pill watch">Watch · monitor</span><p>Still attending, marked Fringe and below their membership target, with no stronger Red or Yellow signal. Unlimited memberships use a target of four sessions.</p></article><article><span class="priority-pill review">Review · missing context</span><p>Zero attendance without enough weekly history, or below-target attendance without the engagement label needed for Watch. Review these cases before choosing an outreach outcome.</p></article></div><p class="risk-guide-note"><strong>Attendance stages:</strong> Early warning = first zero after recent attendance; At risk = two zero snapshots, a sharp stop or declining attendance; Disengaged = 3–4 zero snapshots; Long absence = 5–6; Extended absence = 7+. Monitoring and Needs context describe cases without a confirmed absence stage. Stages use up to eight saved weekly observations. Missing, suspended or ineligible historical slots break the run. Archived weekly summaries are observations, not a verified day-by-day absence record. Existing reports retain their saved history until reimported. Outreach notes and exemptions stay separate.</p><p class="risk-guide-note"><strong>Attendance bands are different:</strong> 0 = Critical; 1 = At Risk; 2 = Low; 3 = Okay; 4+ = Good. Outreach priority also considers history and membership target. The first matching rule wins: Red, then Yellow, then Watch. Missing snapshots are not counted as zero. Current suspensions are held out of outreach.</p><p class="risk-guide-note"><strong>Missing history:</strong> CSV imports keep missing snapshots unknown and flag unresolved cases as Review. They do not assume a Red risk or invent a Fringe engagement label.</p><p class="risk-guide-note">Imported reports supply these priorities; CSV imports calculate them from the selected cutoff and saved weekly attendance. Team notes change outreach status and temporary exemptions; they do not change the recorded risk category.</p></details>
  <div class="table-scroll"><table><thead><tr><th>MEMBER</th><th>RISK SIGNAL</th><th>RECENT WEEKS</th><th>OUTREACH STATUS</th><th><span class="sr-only">Open member</span></th></tr></thead><tbody>${
    visible
      .map((r) => {
@@ -254,7 +269,7 @@ function render() {
        const author = store.data.staff.find(
          (s) => s.id === event?.assigned_to,
        )?.display_name;
-       return `<tr><td><button class="member-button" data-member="${esc(r.member_id)}"><span class="avatar ${r.priority === "Red" ? "rose" : r.priority === "Yellow" ? "sand" : "slate"}">${esc(initials(r.member.full_name))}</span><span><strong>${esc(r.member.full_name)}</strong><small>${esc(r.member.membership)}</small></span></button></td><td><span class="priority-pill ${r.priority.toLowerCase()}"><span class="risk-dot ${r.priority.toLowerCase()}"></span>${r.priority}</span><small class="signal">${esc(r.signal)}</small></td><td>${spark(r)}<small class="session-label">${r.s7} sessions this week</small></td><td><span class="status-label ${r.suppressed ? "done" : ""}">${icon(r.suppressed ? "circle-check" : r.status === "open" ? "circle-dashed" : "message-circle")}${STATUS[r.status]}</span><small class="status-detail">${r.suppressed ? "Through " + fmt(r.last.suppress_through) : r.reopened ? "Exemption expired · review again" : event?.follow_up_on ? "Follow up " + fmt(event.follow_up_on) : author ? esc(author) : r.history.length ? r.history.length + " note" + (r.history.length === 1 ? "" : "s") : "No outreach recorded"}</small></td><td><button class="row-open" data-member="${esc(r.member_id)}" aria-label="Open ${esc(r.member.full_name)}">${icon("arrow-up-right")}</button></td></tr>`;
+       return `<tr><td><button class="member-button" data-member="${esc(r.member_id)}"><span class="avatar ${r.priority === "Red" ? "rose" : r.priority === "Yellow" ? "sand" : "slate"}">${esc(initials(r.member.full_name))}</span><span><strong>${esc(r.member.full_name)}</strong><small>${esc(r.member.membership)}</small></span></button></td><td><span class="priority-pill ${r.priority.toLowerCase()}"><span class="risk-dot ${r.priority.toLowerCase()}"></span>${r.priority}</span>${stageBadge(r)}<small class="signal">${esc(r.signal)}</small></td><td>${spark(r)}<small class="session-label">${r.s7} sessions this week</small></td><td><span class="status-label ${r.suppressed ? "done" : ""}">${icon(r.suppressed ? "circle-check" : r.status === "open" ? "circle-dashed" : "message-circle")}${STATUS[r.status]}</span><small class="status-detail">${r.suppressed ? "Through " + fmt(r.last.suppress_through) : r.reopened ? "Exemption expired · review again" : event?.follow_up_on ? "Follow up " + fmt(event.follow_up_on) : author ? esc(author) : r.history.length ? r.history.length + " note" + (r.history.length === 1 ? "" : "s") : "No outreach recorded"}</small></td><td><button class="row-open" data-member="${esc(r.member_id)}" aria-label="Open ${esc(r.member.full_name)}">${icon("arrow-up-right")}</button></td></tr>`;
      })
      .join("") ||
    `<tr><td colspan="5"><div class="empty">${icon("check-check")}<h3>${search ? "No members match your search" : !store.data.weeks.length ? "Import your first weekly report" : "You’re clear here"}</h3><p>${search ? "Try another name or risk signal." : !store.data.weeks.length ? "An administrator can choose Import week and select the four Clubworx CSV reports." : view === "queue" ? "Every case in this view has been handled." : "There are no cases in this view for the selected week."}</p></div></td></tr>`
@@ -287,6 +302,10 @@ function bind() {
   document
     .querySelectorAll("[data-member]")
     .forEach((b) => (b.onclick = () => openMember(b.dataset.member)));
+  $("#attendance-stage").onchange = (e) => {
+    stage = e.target.value;
+    render();
+  };
   $("#search").oninput = (e) => {
     search = e.target.value;
     render();
@@ -326,7 +345,7 @@ function openMember(id) {
   if (!r) return;
   selected = id;
   const dialog = $("#member-dialog");
-  dialog.innerHTML = `<header class="drawer-top"><span>MEMBER CHECK-IN</span><button type="button" class="icon-button" id="close-member" aria-label="Close member">${icon("x")}</button></header><div class="drawer-body"><div class="member-intro"><span class="avatar large rose">${esc(initials(r.member.full_name))}</span><div><h2 id="member-title">${esc(r.member.full_name)}</h2><p>${esc(r.member.membership)}</p></div></div><div class="risk-callout"><span class="priority-pill ${r.priority.toLowerCase()}">${r.priority} risk</span><strong>${esc(r.signal)}</strong><span>${r.s7} sessions in 7 days · ${r.s30} in 30 days</span><p class="risk-explanation">${esc(riskExplanation(r, store.data.weeks.find((w) => w.week === week)?.import_summary?.sequenceDates || []))}</p><div class="attendance-chart"><small>WEEKLY SNAPSHOTS · HOVER OR TAP A BAR</small>${spark(r)}</div></div>
+  dialog.innerHTML = `<header class="drawer-top"><span>MEMBER CHECK-IN</span><button type="button" class="icon-button" id="close-member" aria-label="Close member">${icon("x")}</button></header><div class="drawer-body"><div class="member-intro"><span class="avatar large rose">${esc(initials(r.member.full_name))}</span><div><h2 id="member-title">${esc(r.member.full_name)}</h2><p>${esc(r.member.membership)}</p></div></div><div class="risk-callout"><span class="priority-pill ${r.priority.toLowerCase()}">${r.priority} risk</span>${stageBadge(r)}<strong>${esc(r.signal)}</strong><span>${r.s7} sessions in 7 days · ${r.s30} in 30 days</span><p class="risk-explanation">${esc(riskExplanation(r, store.data.weeks.find((w) => w.week === week)?.import_summary?.sequenceDates || []))}</p><div class="attendance-chart"><small>WEEKLY SNAPSHOTS · HOVER OR TAP A BAR</small>${spark(r)}</div></div>
  ${r.suppressed ? `<div class="exemption-notice">${icon("circle-check")}<span>Excluded from the action queue through the report dated <strong>${fmt(r.last.suppress_through)}</strong>. Choose “Reopen” to bring this case back.</span></div>` : ""}
  ${r.member.phone ? `<a class="phone-link" href="tel:${esc(r.member.phone.replace(/[^+0-9]/g, ""))}">${icon("phone")} ${esc(r.member.phone)}</a>` : ""}
  <div class="drawer-section-heading"><h3>Record your reach-out</h3><span>Week of ${fmt(week)}</span></div><form id="note-form"><label>What happened?<textarea id="note" required maxlength="4000" rows="4" placeholder="How is training going? What’s the barrier? Agree one next step…"></textarea></label><div class="form-two"><label>Outcome<select id="outcome"><option value="">Add note only</option><option value="contacted">Contacted</option><option value="booked">Session booked</option><option value="completed">Handled · exclude temporarily</option><option value="snoozed">Exempt / pause outreach</option><option value="open">Reopen · needs outreach</option></select></label><label>Assign to<select id="assignee"><option value="">Unassigned</option>${store.data.staff
@@ -486,6 +505,7 @@ async function start(demo) {
     view = "queue";
     search = "";
     priority = "All";
+    stage = "All";
     lastSync = new Date();
     render();
     workspace.subscribe(

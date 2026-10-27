@@ -115,3 +115,39 @@ test("verified archived Fringe context enables Watch without changing current co
   assert.equal(payload.members[0].priority, "Watch");
   assert.equal(payload.members[0].s7, 1);
 });
+
+test("eight observations support seven-week absence without changing the five-prior-week drop rule", () => {
+  const baselines = [
+    "2026-09-07",
+    "2026-09-14",
+    "2026-09-21",
+    "2026-09-28",
+    "2026-10-05",
+    "2026-10-12",
+    "2026-10-19",
+  ].map((date) => baseline(date));
+  const reports = readReports(filesFor(fixture()));
+  const result = convertReports(
+    reports,
+    "2026-10-26",
+    { Unlimited: 4 },
+    [],
+    "2026-10-26",
+    baselines,
+  );
+  assert.equal(result.payload.members[0].sequence.length, 8);
+  assert.equal(result.summary.sequenceDates.length, 8);
+  assert.match(result.payload.members[0].signal, /8 weekly snapshots/);
+  baselines[0].snapshot[0].s7 = 20;
+  baselines[1].snapshot[0].s7 = 20;
+  for (const b of baselines.slice(2)) b.snapshot[0].s7 = 1;
+  const stable = convertReports(
+    reports,
+    "2026-10-26",
+    { Unlimited: 4 },
+    [],
+    "2026-10-26",
+    baselines,
+  );
+  assert.equal(stable.payload.members[0].priority, "Review");
+});

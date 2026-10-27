@@ -6,7 +6,7 @@ export function attendanceLabel(count) {
 
 export function riskExplanation(risk, dates = []) {
   const sequence = risk.sequence || [];
-  const prior = sequence.slice(0, -1);
+  const prior = sequence.slice(-6, -1);
   const known = prior.filter((n) => n !== null);
   const previous = prior.at(-1);
   const stamp = (date) =>
