@@ -93,8 +93,13 @@ const assert = require("node:assert/strict");
     await page
       .getByText("Review weekly attendance targets", { exact: true })
       .waitFor();
-    await page.locator("#preview-csv").click();
+    // Selecting a complete batch prepares the preview without an extra click.
     await page.locator("#confirm-identity").waitFor();
+    assert.equal(
+      imported,
+      null,
+      "Automatic preparation must not write before review",
+    );
     assert.match(
       await page.locator("#import-summary").innerText(),
       /1 people across 2 membership rows/,
@@ -115,6 +120,8 @@ const assert = require("node:assert/strict");
     await page.locator("#confirm-identity").check();
     await page.locator("#import-csv").setInputFiles(fileInputs.slice(0, 3));
     assert.equal(await page.locator("#confirm-import").isDisabled(), true);
+    assert.match(await page.locator("#import-error").innerText(), /all four/);
+    assert.equal(imported, null, "Incomplete batches must never be imported");
     await page.locator("#import-csv").setInputFiles(fileInputs);
     await page.locator("#preview-csv").waitFor({ state: "visible" });
     await page.waitForFunction(
@@ -202,7 +209,14 @@ const assert = require("node:assert/strict");
         },
       ],
     });
-    for (const as_of of ["2026-09-07", "2026-09-14", "2026-09-21", "2026-09-28", "2026-10-05", "2026-10-12"]) {
+    for (const as_of of [
+      "2026-09-07",
+      "2026-09-14",
+      "2026-09-21",
+      "2026-09-28",
+      "2026-10-05",
+      "2026-10-12",
+    ]) {
       baselines.push({ ...baselines[0], as_of });
     }
     const archiveRead = page.waitForResponse((r) =>
@@ -241,7 +255,10 @@ const assert = require("node:assert/strict");
     );
     await page.locator("#attendance-stage").selectOption("Extended absence");
     assert.match(await page.locator("tbody").innerText(), /Extended absence/);
-    assert.match(await page.locator("tbody").innerText(), /8 consecutive zero-attendance snapshots/);
+    assert.match(
+      await page.locator("tbody").innerText(),
+      /8 consecutive zero-attendance snapshots/,
+    );
     await page.locator("#attendance-stage").selectOption("Disengaged");
     assert.equal(await page.locator("tbody .row-open").count(), 0);
     await page.locator("#attendance-stage").selectOption("All");

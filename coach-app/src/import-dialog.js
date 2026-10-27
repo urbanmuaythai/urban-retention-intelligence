@@ -17,7 +17,7 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
     weekday = new Date(today + "T12:00:00Z").getUTCDay();
   const monday = addDays(today, -((weekday + 6) % 7));
   d.innerHTML = `<div class="modal-heading"><h2 id="import-title">Import weekly Clubworx reports</h2><button id="close-import" class="icon-button" aria-label="Close import">${icon("x")}</button></div>
-  <p>Select the four CSV exports together. We match Contact IDs, check the files and prepare the weekly update automatically. Existing notes and exemptions stay attached to each member.</p>
+  <p>Select the four CSV exports together. We match Contact IDs, automatically check the files and prepare the weekly update as soon as you select them. Existing notes and exemptions stay attached to each member.</p>
 
   <p id="import-progress" role="status">Choose your four reports to begin.</p><p id="import-error" class="form-error" role="alert" tabindex="-1" hidden></p>
 
@@ -31,7 +31,7 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
   <label class="import-date">Report week beginning (Monday)<input type="date" id="import-week" value="${monday}" max="${today}"></label>
 
   <div id="csv-files" aria-live="polite"></div><div id="csv-targets"></div>
-  <button class="button secondary" id="preview-csv" disabled>Check files & preview</button>
+  <button class="button secondary" id="preview-csv" disabled>Recheck files & preview</button>
   <details class="advanced-import"><summary>Advanced: prepared JSON export</summary><label>Choose an existing outreach JSON<input type="file" id="import-file" accept=".json,application/json"></label></details>
 
   <div id="import-summary" aria-live="polite"></div>
@@ -151,6 +151,7 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
         .forEach((el) => (el.oninput = invalidate));
       $("#csv-files").dataset.ready = "true";
       $("#preview-csv").disabled = false;
+      $("#preview-csv").click();
     } catch (err) {
       if (ticket === reading && d.open) {
         $("#csv-files").textContent = "";
