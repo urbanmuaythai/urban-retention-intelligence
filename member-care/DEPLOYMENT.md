@@ -2,7 +2,7 @@
 
 Production entry: https://urbanmuaythai.github.io/urban-retention-intelligence/member-care/
 
-Published from the existing app source on branch `codex/coach-outreach`, commit `df4307081dbcb885660eebe45de07aa2239f6659`.
+Published from the existing app source on branch `codex/coach-outreach`, commit `a060e4f292a060baa9bf22e964fd800f03bfafcb`.
 
 Build from `coach-app` using Node 22 or later and the locked dependencies:
 
@@ -27,3 +27,6 @@ Cutoff correction: a Monday report-week key is distinct from the actual export d
 Historical summaries: the staff app reads identity-reviewed attendance_baselines from protected Supabase storage and reuses them during later CSV imports. Original weekly dates are visible; archived cutoffs within one day are a labelled fallback. Recent verified engagement context expires after 14 days and must match the membership family. Migration `20261027020548_attendance_baselines.sql` is applied. Private source archives, matching audits, backups and generated member payloads are excluded from this build.
 
 Attendance inspection: bars support hover, keyboard focus and tap with a top-layer tooltip showing the original snapshot date, session count and current risk explanation. The member card also shows a plain-language reason. Missing observations stay unknown, and inspecting a bar does not save or alter notes. Verified with unit tests and mobile browser interaction, including preserving a typed draft.
+
+
+Attendance stages: eight dated weekly observations now support Early warning, At risk, Disengaged, Long absence and Extended absence, with Monitoring and Needs context for other cases. A separate stage filter complements risk priority. Null history breaks zero runs; archived snapshots are labelled observations. Current report history was expanded in a guarded transaction for 269 cases with unchanged priorities/current counts and both existing outreach events verified unchanged. Unit/integration tests: 44 passed. Mobile browser tests cover Extended absence, filtering, tooltip interactions and preserving draft notes.
