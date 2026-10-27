@@ -2,7 +2,7 @@
 
 Production entry: https://urbanmuaythai.github.io/urban-retention-intelligence/member-care/
 
-Published from the existing app source on branch `codex/coach-outreach`, commit `93b9a31b505f47cdc4554c896758146a936b7d55`.
+Published from the existing app source on branch `codex/coach-outreach`, commit `cafc144af44fc00588e577827d04dc3c363807ac`.
 
 Build from `coach-app` using Node 22 or later and the locked dependencies:
 
@@ -21,3 +21,5 @@ Copy only the resulting `dist` contents into this `member-care` folder on the Pa
 The hosted release supports four-CSV import with an explicit review before saving, stable Contact IDs, complete weekly attendance snapshots and a separate Review category for missing historical/engagement context. Prepared JSON remains under Advanced. Migration `20261027010958_csv_weekly_import.sql` is applied to the connected Supabase project. The database had no member/report records at this release; no supplied member data was auto-imported. Staff sign in using their existing Supabase credentials. See `coach-app/CSV_IMPORT.md` on the source branch for rules, limitations and verification.
 
 Supabase Auth password-reset redirects must allow the exact hosted app URL with `?flow=recovery`. Hosted reset-email delivery and an authenticated cross-device note save require verification with an authorised staff session.
+
+Cutoff correction: a Monday report-week key is distinct from the actual export date. Data as of 27 October 2026 can belong to the week beginning 26 October. Eligibility and rolling attendance use the actual cutoff, history comparisons use cutoffs seven days apart, and validation failures are focused at the top of the import dialog. Migration `20261027012401_csv_export_cutoff.sql` is applied.
