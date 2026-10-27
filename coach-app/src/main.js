@@ -41,6 +41,7 @@ import {
 } from "./attendance-ui.js";
 import { attendanceStage, ATTENDANCE_STAGES } from "./attendance-stage.js";
 const hideAttendanceTooltip = installAttendanceTooltips();
+import { reportingView } from "./reporting.js";
 import { showImport } from "./import-dialog.js";
 import {
   Workspace,
@@ -218,6 +219,7 @@ function render() {
    ["due", "calendar-clock", "Follow-ups due", due],
    ["handled", "circle-check", "Handled & exempt", handled],
    ["all", "users", "All risk members", all.length],
+   ["reporting", "calendar-days", "Reporting", store.data.weeks.length],
  ]
    .map(
      ([id, ic, label, n]) =>
@@ -226,7 +228,7 @@ function render() {
    .join("")}</nav>
  <div class="sidebar-note"><div class="note-icon">${icon("heart-handshake")}</div><strong>A small check-in.<br>A stronger community.</strong><p>Reach out, leave context, and give the next team member a clear next step.</p></div>
  <div class="profile"><span class="avatar gold">${esc(initials(store.user.display_name))}</span><span><strong>${esc(store.user.display_name)}</strong><small>${store.demo ? "Sample workspace" : esc(store.user.role === "admin" ? "Administrator" : "Team member")}</small></span>${!store.demo ? `<button class="icon-button" id="signout" aria-label="Sign out">${icon("log-out")}</button>` : ""}</div></aside>
- <div class="main-shell"><header class="topbar"><div><span class="crumb">Urban Member Care</span><span class="slash">/</span> Weekly outreach</div><div class="top-actions"><span class="connection ${store.demo ? "preview" : store.online ? "connected" : ""}"><span class="tiny-dot"></span>${store.demo ? "Preview mode" : store.online ? "Live updates on" : "Connected · auto-refresh"}</span><button class="icon-button" id="refresh" aria-label="Refresh workspace" title="Refresh">${icon("refresh-cw")}</button></div></header>
+ <div class="main-shell"><header class="topbar"><div><span class="crumb">Urban Member Care</span><span class="slash">/</span> ${view === "reporting" ? "Reporting" : "Weekly outreach"}</div><div class="top-actions"><span class="connection ${store.demo ? "preview" : store.online ? "connected" : ""}"><span class="tiny-dot"></span>${store.demo ? "Preview mode" : store.online ? "Live updates on" : "Connected · auto-refresh"}</span><button class="icon-button" id="refresh" aria-label="Refresh workspace" title="Refresh">${icon("refresh-cw")}</button></div></header>
  ${store.demo ? `<div class="demo-banner">${icon("flask-conical")}<span><strong>Sample workspace.</strong> Fictional members; notes save only in this browser.</span><button id="reset-demo">Reset preview</button><button id="go-login">Back to sign in</button></div>` : ""}
  <main><div class="page-heading"><div><div class="eyebrow">EVERY MEMBER MATTERS</div><h1>${view === "handled" ? "Handled & exempt" : view === "due" ? "Follow-ups due" : view === "all" ? "All risk members" : "Weekly outreach"}<span class="heading-dot">.</span></h1><p>${store.data.weeks.length ? "Attendance data as of " + fmt(asOf) + ". " : ""}${view === "handled" ? "Completed and paused cases, with context for the next team member." : "A clear next step for every member who needs a check-in."}</p></div><div class="heading-actions"><label class="week-control">${icon("calendar-days")}<span><small>REPORT WEEK</small><select id="week" aria-label="Report week">${[
    ...store.data.weeks,
@@ -279,9 +281,19 @@ function render() {
  <footer class="table-footer"><span>${visible.length} members shown · week beginning ${store.data.weeks.length ? fmt(week) : "—"}${store.data.weeks.length ? " · data as of " + fmt(asOf) : ""}</span><span>${lastSync ? "Updated " + new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", timeZone: "Australia/Brisbane" }).format(lastSync) : "Weekly attendance snapshot"}</span></footer></section>
  <p class="scope-note">${icon("info")} Staff notes change the outreach queue. Attendance and risk signals remain as recorded in the weekly report.</p>
  </main></div></div><dialog id="member-dialog" class="member-dialog" aria-labelledby="member-title"></dialog><dialog id="import-dialog" class="import-dialog" aria-labelledby="import-title"></dialog>`;
+  if (view === "reporting")
+    $("#app main").innerHTML = reportingView(store.data, week, {
+      esc,
+      fmt,
+      icon,
+    });
   bind();
   decorate();
-  if (focus === "search") {
+  const nav = document.querySelector('nav[aria-label="Workspace"]');
+  const activeNav = nav?.querySelector('.selected');
+  if (nav && activeNav && nav.scrollWidth > nav.clientWidth)
+    nav.scrollLeft += activeNav.getBoundingClientRect().left - nav.getBoundingClientRect().left - 8;
+  if (focus === "search" && $("#search")) {
     $("#search").focus();
     $("#search").setSelectionRange(cursor, cursor);
   }
@@ -304,14 +316,31 @@ function bind() {
   document
     .querySelectorAll("[data-member]")
     .forEach((b) => (b.onclick = () => openMember(b.dataset.member)));
-  $("#attendance-stage").onchange = (e) => {
-    stage = e.target.value;
-    render();
-  };
-  $("#search").oninput = (e) => {
-    search = e.target.value;
-    render();
-  };
+  if ($("#attendance-stage"))
+    $("#attendance-stage").onchange = (e) => {
+      stage = e.target.value;
+      render();
+    };
+  if ($("#search"))
+    $("#search").oninput = (e) => {
+      search = e.target.value;
+      render();
+    };
+  document.querySelectorAll("[data-report-week]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        week = b.dataset.reportWeek;
+        render();
+      }),
+  );
+  if ($("#report-open-red"))
+    $("#report-open-red").onclick = () => {
+      view = "all";
+      priority = "Red";
+      stage = "All";
+      search = "";
+      render();
+    };
   $("#week").onchange = (e) => {
     week = e.target.value;
     render();

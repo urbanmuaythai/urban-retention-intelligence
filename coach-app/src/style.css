@@ -2417,3 +2417,58 @@ tbody tr:hover {
 .risk-callout > .stage-detail {
   margin-bottom: 12px;
 }
+
+.reporting-panel {
+  margin-top: 24px;
+}
+.report-period {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0 0 22px;
+}
+.report-table th[scope="row"] {
+  color: #e7ecff;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+.report-table td {
+  font-variant-numeric: tabular-nums;
+}
+.report-total {
+  background: #252d48;
+  font-weight: 700;
+}
+.report-selected {
+  background: #202741;
+}
+.report-week-button {
+  border: 0;
+  background: transparent;
+  color: var(--gold);
+  cursor: pointer;
+  text-align: left;
+  padding: 8px 0;
+  font: inherit;
+}
+.report-week-button:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+.report-definitions {
+  margin-top: 24px;
+}
+.reporting-empty {
+  padding: 24px;
+}
+.reporting-metrics .metric strong {
+  font-size: clamp(32px, 4vw, 48px);
+}
+@media (max-width: 600px) {
+  .reporting-panel .panel-heading {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+}
+
+.report-scroll-hint { display: none; color: var(--muted); font-size: 11px; padding: 0 16px 12px; margin: 0; }
+@media (max-width: 760px) { .report-scroll-hint { display: block; } }

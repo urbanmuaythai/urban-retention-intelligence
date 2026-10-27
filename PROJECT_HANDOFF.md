@@ -69,3 +69,10 @@ When publication is requested/authorised, refresh the sibling publish checkout f
 At this checkpoint, .gitignore, coach-app/README.md and root index.html had pre-existing uncommitted changes. Untracked legacy helpers/bootstrap files also existed: scripts/make_identity_map.py, scripts/test_identity_map.py, supabase/bootstrap_admin.sql and supabase/migrations/20261026075534_restrict_anonymous_rpc.sql. Preserve them; do not stage them as part of an unrelated revision. The last migration's anonymous-RPC restriction was already applied live earlier; do not blindly reapply it.
 
 Private CSVs, matching audits, backups and generated imports are outside this Git checkout in the parent workspace. Never copy those into published assets or commits.
+
+
+## Weekly Reporting tab (28 October 2026)
+
+`coach-app/src/reporting.js` derives read-only weekly counts from already-authorised weekly_risks and outreach_events in the store; no database schema changes or data writes. Each member counts once per saved report week. Contacted means at least one Contacted or Session booked outcome assigned to that report week. Notes-only, Handled-only and Exempt-only do not count as contact. Previous-week contact does not carry forward; a later reopen does not erase contact evidence. All flagged cases, including exemptions, are in the denominator. Exemptions remain a separate potentially overlapping count. No cohort shows no percentage. Reports use the latest saved report per week; reimports may change cohorts, and attendance-only archives cannot supply historical contact totals.
+
+The sidebar Reporting tab shows Red flagged/contacted/no-contact/coverage cards, all-priority breakdown and selectable week-by-week history. View Red outreach opens that week's full Red list. Tests cover deduplication, week isolation, exemptions, reopen and empty cohorts, plus mobile navigation, table counts and the report-week selector. Most recent check: 52 automated tests and the local/hosted browser workflow. Continue to stage only explicit revision files.
