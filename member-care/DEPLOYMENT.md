@@ -2,7 +2,7 @@
 
 Production entry: https://urbanmuaythai.github.io/urban-retention-intelligence/member-care/
 
-Published from the existing app source on branch `codex/coach-outreach`, commit `c753303c70171a463c20c2f878cd08d3392caf8b`.
+Published from the existing app source on branch `codex/coach-outreach`, commit `df4307081dbcb885660eebe45de07aa2239f6659`.
 
 Build from `coach-app` using Node 22 or later and the locked dependencies:
 
@@ -25,3 +25,5 @@ Supabase Auth password-reset redirects must allow the exact hosted app URL with 
 Cutoff correction: a Monday report-week key is distinct from the actual export date. Data as of 27 October 2026 can belong to the week beginning 26 October. Eligibility and rolling attendance use the actual cutoff, history comparisons use cutoffs seven days apart, and validation failures are focused at the top of the import dialog. Migration `20261027012401_csv_export_cutoff.sql` is applied.
 
 Historical summaries: the staff app reads identity-reviewed attendance_baselines from protected Supabase storage and reuses them during later CSV imports. Original weekly dates are visible; archived cutoffs within one day are a labelled fallback. Recent verified engagement context expires after 14 days and must match the membership family. Migration `20261027020548_attendance_baselines.sql` is applied. Private source archives, matching audits, backups and generated member payloads are excluded from this build.
+
+Attendance inspection: bars support hover, keyboard focus and tap with a top-layer tooltip showing the original snapshot date, session count and current risk explanation. The member card also shows a plain-language reason. Missing observations stay unknown, and inspecting a bar does not save or alter notes. Verified with unit tests and mobile browser interaction, including preserving a typed draft.
