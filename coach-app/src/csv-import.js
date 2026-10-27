@@ -244,13 +244,27 @@ function classify(s7, s30, sequence, target, engagement) {
   return null;
 }
 
-export function convertReports(reports, week, targets, history = []) {
+export function convertReports(
+  reports,
+  week,
+  targets,
+  history = [],
+  asOf = week,
+) {
   date(week, "Report date");
   if (new Date(week + "T12:00:00Z").getUTCDay() !== 1)
     throw Error("Choose a Monday for the report week.");
-  if (reports.suggestedWeek && reports.suggestedWeek !== week)
+
+  date(asOf, "Data as of");
+
+  if (asOf < week || asOf > addDays(week, 6))
     throw Error(
-      "Report date does not match the date in the CSV filenames. Use exports for the selected Monday.",
+      `Data-as-of date ${asOf} does not match the selected report week ${week}. Select the Monday of that same week.`,
+    );
+
+  if (reports.suggestedWeek && reports.suggestedWeek !== asOf)
+    throw Error(
+      "Data-as-of date does not match the date in the CSV filenames. Select the actual export date; the report week remains its Monday.",
     );
   const attendance = new Map(),
     roster = new Map(),
@@ -287,9 +301,10 @@ export function convertReports(reports, week, targets, history = []) {
       "Last attendance",
       true,
     );
-    if (last && last > week)
+
+    if (last && last > asOf)
       throw Error(
-        "Attendance contains a date after the selected report cutoff.",
+        `Attendance contains a date after the selected report cutoff (${asOf}): ${last} for Contact ID ${id}. Set Data as of to the actual export date, or use exports for the chosen cutoff. Rolling 7-day and 30-day totals cannot be backdated.`,
       );
     const prev = attendance.get(id);
     if (prev && (prev.s7 !== s7 || prev.s30 !== s30))
@@ -332,13 +347,14 @@ export function convertReports(reports, week, targets, history = []) {
       excludedProducts++;
       continue;
     }
-    if (start > week) {
+
+    if (start > asOf) {
       futureStarts++;
       continue;
     }
     if (
       !active ||
-      (end && end < week) ||
+      (end && end < asOf) ||
       /^(cancelled|not attending)$/i.test(row.Status)
     )
       continue;
@@ -360,7 +376,8 @@ export function convertReports(reports, week, targets, history = []) {
       end = date(row["Suspension Ends"], "Suspension end", true);
     if (end && end < start) throw Error("Suspension ends before it starts.");
     flag(row["Suspension Current?"], "Suspension Current?");
-    if (start <= week && (!end || end >= week))
+
+    if (start <= asOf && (!end || end >= asOf))
       suspended.add(row["Contact ID"]);
   }
   let flaggedCancellations = 0,
@@ -387,7 +404,7 @@ export function convertReports(reports, week, targets, history = []) {
       flaggedCancellations++;
       if (
         end &&
-        end <= week &&
+        end <= asOf &&
         norm(row["Cancellation Reason"]) !== "roll over"
       )
         effectiveCancellations++;
@@ -397,7 +414,8 @@ export function convertReports(reports, week, targets, history = []) {
     history
       .filter((w) => w.week < week)
       .map((w) => [
-        w.week,
+        w.import_summary?.asOf || w.week,
+
         new Map((w.attendance_snapshot || []).map((r) => [r.member_id, r.s7])),
       ]),
   );
@@ -442,7 +460,7 @@ export function convertReports(reports, week, targets, history = []) {
     const sequence = Array.from(
       { length: 5 },
       (_, i) =>
-        historical.get(addDays(week, (i - 5) * 7))?.get(member_id) ?? null,
+        historical.get(addDays(asOf, (i - 5) * 7))?.get(member_id) ?? null,
     ).concat(a.s7);
     if (sequence.slice(0, -1).every((x) => x === null)) noHistory++;
     snapshot.push({ member_id, s7: a.s7, s30: a.s30 });
@@ -481,6 +499,9 @@ export function convertReports(reports, week, targets, history = []) {
   );
   const summary = {
     targets,
+
+    asOf,
+
     rosterContacts: roster.size,
     membershipRows: reports.active.rows.length,
     eligible: snapshot.length,

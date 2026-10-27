@@ -18,19 +18,38 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
   const monday = addDays(today, -((weekday + 6) % 7));
   d.innerHTML = `<div class="modal-heading"><h2 id="import-title">Import weekly Clubworx reports</h2><button id="close-import" class="icon-button" aria-label="Close import">${icon("x")}</button></div>
   <p>Select the four CSV exports together. We match Contact IDs, check the files and prepare the weekly update automatically. Existing notes and exemptions stay attached to each member.</p>
+
+  <p id="import-progress" role="status">Choose your four reports to begin.</p><p id="import-error" class="form-error" role="alert" tabindex="-1" hidden></p>
+
   <label class="upload-zone">${icon("upload-cloud")}<strong>Choose the four Clubworx CSV reports</strong><input type="file" id="import-csv" multiple accept=".csv,text/csv"></label>
   <p class="import-hint">Attendance · Active memberships · Suspensions · Cancellations. Export all four using the same cutoff, including members with zero attendance.</p>
-  <label class="import-date">Report week (Monday)<input type="date" id="import-week" value="${monday}" max="${today}"></label>
+
+  <label class="import-date">Data as of (actual export date)<input type="date" id="import-as-of" value="${today}" max="${today}"></label>
+
+  <p class="import-hint">Rolling attendance totals use the actual export date. The Monday date below groups the report into its week.</p>
+
+  <label class="import-date">Report week beginning (Monday)<input type="date" id="import-week" value="${monday}" max="${today}"></label>
+
   <div id="csv-files" aria-live="polite"></div><div id="csv-targets"></div>
   <button class="button secondary" id="preview-csv" disabled>Check files & preview</button>
   <details class="advanced-import"><summary>Advanced: prepared JSON export</summary><label>Choose an existing outreach JSON<input type="file" id="import-file" accept=".json,application/json"></label></details>
-  <div id="import-summary" aria-live="polite"></div><p id="import-error" class="form-error" role="alert"></p>
+
+  <div id="import-summary" aria-live="polite"></div>
+
   <button class="button primary" id="confirm-import" disabled>Import reviewed week</button>`;
   d.showModal();
   decorate();
   const invalidate = () => {
     payload = null;
     $("#confirm-import").disabled = true;
+
+    $("#confirm-import").textContent = "Import reviewed week";
+
+    $("#import-error").hidden = true;
+
+    $("#import-progress").textContent =
+      "Check files & preview before importing.";
+
     $("#import-summary").innerHTML = "";
     $("#import-error").textContent = "";
   };
@@ -38,6 +57,15 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
     invalidate();
     $("#import-error").textContent =
       err.message || "Could not read these reports.";
+
+    $("#import-error").hidden = false;
+
+    $("#import-progress").textContent =
+      "Import paused — the files need attention.";
+
+    $("#confirm-import").textContent = "Resolve the issue before importing";
+
+    $("#import-error").focus();
   };
   const close = () => {
     if (!saving) {
@@ -51,6 +79,19 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
     else reading++;
   };
   $("#import-week").onchange = invalidate;
+
+  $("#import-as-of").onchange = () => {
+    invalidate();
+
+    const asOf = $("#import-as-of").value;
+
+    if (asOf) {
+      const day = new Date(asOf + "T12:00:00Z").getUTCDay();
+
+      $("#import-week").value = addDays(asOf, -((day + 6) % 7));
+    }
+  };
+
   $("#import-csv").onchange = async (e) => {
     const ticket = ++reading;
     invalidate();
@@ -70,8 +111,18 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
       );
       if (ticket !== reading || !d.open) return;
       reports = readReports(texts);
-      if (reports.suggestedWeek)
-        $("#import-week").value = reports.suggestedWeek;
+
+      const asOf = reports.suggestedWeek || today;
+
+      $("#import-as-of").value = asOf;
+
+      const day = new Date(asOf + "T12:00:00Z").getUTCDay();
+
+      $("#import-week").value = addDays(asOf, -((day + 6) % 7));
+
+      $("#import-progress").textContent =
+        "Files read. Confirm Data as of, then check the preview.";
+
       $("#csv-files").innerHTML = `<ul>${Object.entries(reportLabels)
         .map(
           ([key, label]) =>
@@ -110,7 +161,8 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
   const confirmReview = (extra) => {
     $("#import-summary").insertAdjacentHTML(
       "beforeend",
-      `${extra}<label class="checkbox-label"><input type="checkbox" id="confirm-identity"> I reviewed the report date, exclusions and member identities. ${store.data.weeks.some((w) => w.week === payload.week) ? "This replaces the existing snapshot for this week." : "This creates a new weekly snapshot."}</label>`,
+
+      `${extra}<label class="checkbox-label"><input type="checkbox" id="confirm-identity"> I reviewed the report week, data-as-of date, exclusions and member identities. ${store.data.weeks.some((w) => w.week === payload.week) ? "This replaces the existing snapshot for this week." : "This creates a new weekly snapshot."}</label>`,
     );
     $("#confirm-identity").onchange = (e) => {
       $("#confirm-import").disabled = !e.target.checked || store.demo;
@@ -120,8 +172,11 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
     invalidate();
     try {
       if (!reports) throw Error("Choose the four CSV reports first.");
-      const week = $("#import-week").value;
-      if (week > today)
+
+      const week = $("#import-week").value,
+        asOf = $("#import-as-of").value;
+
+      if (week > today || asOf > today)
         throw Error("The report cutoff cannot be in the future.");
       if (store.data.members.some((m) => m.id.startsWith("name-v1:")))
         throw Error(
@@ -133,8 +188,20 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
           el.value === "" ? null : Number(el.value),
         ]),
       );
-      const result = convertReports(reports, week, targets, store.data.weeks);
+
+      const result = convertReports(
+        reports,
+        week,
+        targets,
+        store.data.weeks,
+        asOf,
+      );
+
       payload = result.payload;
+
+      $("#import-progress").textContent =
+        "Preview ready. Review the results before confirming.";
+
       const s = result.summary,
         totals = ["Red", "Yellow", "Watch", "Review"]
           .map(
@@ -143,7 +210,7 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
           )
           .join(" · ");
       $("#import-summary").innerHTML =
-        `<h3>${fmt(week)} · ${payload.members.length} members to assess</h3><p>${totals}</p><ul><li>${s.rosterContacts} people across ${s.membershipRows} membership rows; attendance counted once per person.</li><li>${s.eligible} eligible training members saved for weekly comparisons.</li><li>${s.currentSuspensions} currently suspended contacts held out; ${s.suspensionStatusHeld} additional contacts held by membership status.</li><li>${s.excludedProductRows} tour-payment memberships excluded; ${s.futureStartRows} future-start memberships excluded.</li><li>${s.noPriorWeeklyHistory} eligible people have no prior weekly snapshot here. Missing weeks stay unknown.</li></ul><div class="identity-warning"><strong>${s.review} members need review.</strong> CSVs may omit engagement labels and earlier weekly attendance. Review is separate from Red / Yellow / Watch; it flags missing context without assuming that missing attendance is zero.</div><p>Cancellations checked: ${s.flaggedCancellations} flagged records; ${s.effectiveCancellations} ended by the cutoff, excluding rollovers. These are source checks before the full retention report’s reporting window and administrative adjustments, and are not a published cancellation KPI.</p><p>Roster coverage may differ from the older tracked report. Preview the first 20 members below before importing. Raw CSV files stay in your browser; the reviewed snapshot and summary are saved to Supabase.</p><div class="import-preview"><table><thead><tr><th>Member</th><th>Priority</th><th>Signal</th></tr></thead><tbody>${
+        `<h3>Week beginning ${fmt(week)} · ${payload.members.length} members to assess</h3><p><strong>Data as of ${fmt(asOf)}</strong> · rolling attendance totals use the actual export date.</p><p>${totals}</p><ul><li>${s.rosterContacts} people across ${s.membershipRows} membership rows; attendance counted once per person.</li><li>${s.eligible} eligible training members saved for weekly comparisons.</li><li>${s.currentSuspensions} currently suspended contacts held out; ${s.suspensionStatusHeld} additional contacts held by membership status.</li><li>${s.excludedProductRows} tour-payment memberships excluded; ${s.futureStartRows} future-start memberships excluded.</li><li>${s.noPriorWeeklyHistory} eligible people have no prior weekly snapshot here. Missing weeks stay unknown.</li></ul><div class="identity-warning"><strong>${s.review} members need review.</strong> CSVs may omit engagement labels and earlier weekly attendance. Review is separate from Red / Yellow / Watch; it flags missing context without assuming that missing attendance is zero.</div><p>Cancellations checked: ${s.flaggedCancellations} flagged records; ${s.effectiveCancellations} ended by the cutoff, excluding rollovers. These are source checks before the full retention report’s reporting window and administrative adjustments, and are not a published cancellation KPI.</p><p>Roster coverage may differ from the older tracked report. Preview the first 20 members below before importing. Raw CSV files stay in your browser; the reviewed snapshot and summary are saved to Supabase.</p><div class="import-preview"><table><thead><tr><th>Member</th><th>Priority</th><th>Signal</th></tr></thead><tbody>${
           payload.members
             .slice(0, 20)
             .map(
@@ -201,6 +268,11 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
     d.querySelectorAll("input,button").forEach((el) => (el.disabled = true));
     $("#confirm-import").textContent = "Importing…";
     $("#import-error").textContent = "";
+
+    $("#import-error").hidden = true;
+
+    $("#import-progress").textContent = "Saving the reviewed weekly update…";
+
     try {
       await store.import(current);
       saving = false;
@@ -210,6 +282,14 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
       saving = false;
       $("#import-error").textContent =
         err.message || "Import failed. Nothing was confirmed as saved.";
+
+      $("#import-error").hidden = false;
+
+      $("#import-progress").textContent =
+        "Import could not be confirmed. Review the error and retry.";
+
+      $("#import-error").focus();
+
       d.querySelectorAll("input,button").forEach((el) => (el.disabled = false));
       $("#preview-csv").disabled = !reports;
       $("#confirm-import").textContent = "Import reviewed week";

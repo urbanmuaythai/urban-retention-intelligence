@@ -140,6 +140,52 @@ const assert = require("node:assert/strict");
     assert.equal(imported.members[0].priority, "Review");
     await page.getByRole("button", { name: "Review", exact: true }).click();
     assert.match(await page.locator("tbody").innerText(), /Fictional Member/);
+    // Reproduce the reported issue: a fresh Tuesday export in Monday's report week.
+    await page.locator("#import-open").click();
+    const freshRows = fixture({ s7: 1, s30: 4 });
+    freshRows.attendance[0]["Attendance Last Marked"] = "2026-10-27 09:00:00";
+    const freshFiles = filesFor(freshRows).map((f, i) => ({
+      name: `report_export_${i}.csv`,
+      mimeType: "text/csv",
+      buffer: Buffer.from(f.text),
+    }));
+    await page.locator("#import-csv").setInputFiles(freshFiles);
+    await page.waitForFunction(
+      () => !document.querySelector("#preview-csv").disabled,
+    );
+    await page.locator("#import-as-of").fill("2026-10-26");
+    await page.locator("#preview-csv").click();
+    assert.match(
+      await page.locator("#import-error").innerText(),
+      /cutoff \(2026-10-26\): 2026-10-27/,
+    );
+    assert.equal(
+      await page
+        .locator("#import-error")
+        .evaluate((el) => el === document.activeElement),
+      true,
+      "Validation error is focused instead of hidden at the bottom",
+    );
+    assert.match(await page.locator("#import-progress").innerText(), /paused/);
+    assert.equal(await page.locator("#confirm-import").isDisabled(), true);
+    await page.locator("#import-as-of").fill("2026-10-27");
+    assert.equal(await page.locator("#import-week").inputValue(), "2026-10-26");
+    await page.locator("#preview-csv").click();
+    assert.match(
+      await page.locator("#import-summary").innerText(),
+      /Data as of 27 Oct 2026/,
+    );
+    await page.locator("#confirm-identity").check();
+    await page.locator("#confirm-import").click();
+    await page.waitForFunction(
+      () => !document.querySelector("#import-dialog").open,
+    );
+    assert.equal(imported.week, "2026-10-26");
+    assert.equal(imported.import_summary.asOf, "2026-10-27");
+    assert.match(
+      await page.locator(".table-footer").innerText(),
+      /data as of 27 Oct 2026/,
+    );
     assert.deepEqual(errors, []);
     console.log(
       "PASS: production CSV picker, preview, identity review, stale-preview invalidation, mobile dialog, SDK import and Review filter (mocked Supabase; no live data written)",

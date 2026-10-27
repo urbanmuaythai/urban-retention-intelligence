@@ -171,6 +171,8 @@ function render() {
   ).length;
   const progress = all.length ? Math.round((handled / all.length) * 100) : 0;
   const visible = filtered();
+  const asOf =
+    store.data.weeks.find((w) => w.week === week)?.import_summary?.asOf || week;
   $("#app").innerHTML = `<div class="workspace">
  <aside class="sidebar"><a class="brand" href="/" aria-label="Urban Muaythai Member Care"><img class="brand-logo" src="${urbanLogo}" alt="Urban Muaythai logo" width="58" height="58"><span>URBAN<span class="brand-sub">MUAYTHAI</span></span></a>
  <div class="workspace-tag"><span class="tiny-dot"></span> RETENTION WORKSPACE</div>
@@ -190,7 +192,7 @@ function render() {
  <div class="profile"><span class="avatar gold">${esc(initials(store.user.display_name))}</span><span><strong>${esc(store.user.display_name)}</strong><small>${store.demo ? "Sample workspace" : esc(store.user.role === "admin" ? "Administrator" : "Team member")}</small></span>${!store.demo ? `<button class="icon-button" id="signout" aria-label="Sign out">${icon("log-out")}</button>` : ""}</div></aside>
  <div class="main-shell"><header class="topbar"><div><span class="crumb">Urban Member Care</span><span class="slash">/</span> Weekly outreach</div><div class="top-actions"><span class="connection ${store.demo ? "preview" : store.online ? "connected" : ""}"><span class="tiny-dot"></span>${store.demo ? "Preview mode" : store.online ? "Live updates on" : "Connected · auto-refresh"}</span><button class="icon-button" id="refresh" aria-label="Refresh workspace" title="Refresh">${icon("refresh-cw")}</button></div></header>
  ${store.demo ? `<div class="demo-banner">${icon("flask-conical")}<span><strong>Sample workspace.</strong> Fictional members; notes save only in this browser.</span><button id="reset-demo">Reset preview</button><button id="go-login">Back to sign in</button></div>` : ""}
- <main><div class="page-heading"><div><div class="eyebrow">EVERY MEMBER MATTERS</div><h1>${view === "handled" ? "Handled & exempt" : view === "due" ? "Follow-ups due" : view === "all" ? "All risk members" : "Weekly outreach"}<span class="heading-dot">.</span></h1><p>${view === "handled" ? "Completed and paused cases, with context for the next team member." : "A clear next step for every member who needs a check-in."}</p></div><div class="heading-actions"><label class="week-control">${icon("calendar-days")}<span><small>REPORT WEEK</small><select id="week" aria-label="Report week">${[
+ <main><div class="page-heading"><div><div class="eyebrow">EVERY MEMBER MATTERS</div><h1>${view === "handled" ? "Handled & exempt" : view === "due" ? "Follow-ups due" : view === "all" ? "All risk members" : "Weekly outreach"}<span class="heading-dot">.</span></h1><p>${store.data.weeks.length ? "Attendance data as of " + fmt(asOf) + ". " : ""}${view === "handled" ? "Completed and paused cases, with context for the next team member." : "A clear next step for every member who needs a check-in."}</p></div><div class="heading-actions"><label class="week-control">${icon("calendar-days")}<span><small>REPORT WEEK</small><select id="week" aria-label="Report week">${[
    ...store.data.weeks,
  ]
    .sort((a, b) => b.week.localeCompare(a.week))
@@ -236,7 +238,7 @@ function render() {
      .join("") ||
    `<tr><td colspan="5"><div class="empty">${icon("check-check")}<h3>${search ? "No members match your search" : !store.data.weeks.length ? "Import your first weekly report" : "You’re clear here"}</h3><p>${search ? "Try another name or risk signal." : !store.data.weeks.length ? "An administrator can choose Import week and select the four Clubworx CSV reports." : view === "queue" ? "Every case in this view has been handled." : "There are no cases in this view for the selected week."}</p></div></td></tr>`
  }</tbody></table></div>
- <footer class="table-footer"><span>${visible.length} members shown · report dated ${store.data.weeks.length ? fmt(week) : "—"}</span><span>${lastSync ? "Updated " + new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", timeZone: "Australia/Brisbane" }).format(lastSync) : "Weekly attendance snapshot"}</span></footer></section>
+ <footer class="table-footer"><span>${visible.length} members shown · week beginning ${store.data.weeks.length ? fmt(week) : "—"}${store.data.weeks.length ? " · data as of " + fmt(asOf) : ""}</span><span>${lastSync ? "Updated " + new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", timeZone: "Australia/Brisbane" }).format(lastSync) : "Weekly attendance snapshot"}</span></footer></section>
  <p class="scope-note">${icon("info")} Staff notes change the outreach queue. Attendance and risk signals remain as recorded in the weekly report.</p>
  </main></div></div><dialog id="member-dialog" class="member-dialog" aria-labelledby="member-title"></dialog><dialog id="import-dialog" class="import-dialog" aria-labelledby="import-title"></dialog>`;
   bind();

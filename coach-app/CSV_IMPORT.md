@@ -2,10 +2,10 @@
 
 Administrators can select the four Clubworx CSV exports directly in **Import week**. Conversion to the existing version 1 JSON payload happens inside the browser; there is no separate conversion task for staff. Prepared JSON remains under Advanced for legacy workflows.
 
-1. Export Attendance, Active Memberships, Suspensions and Cancellations together, for the same Monday cutoff. Attendance must include zero-attendance members. Keep the validated UMC column names.
+1. Export Attendance, Active Memberships, Suspensions and Cancellations together, for the same actual export date. The report is grouped under the Monday of that week; a Tuesday export keeps Tuesday as its data-as-of date. Attendance must include zero-attendance members. Keep the validated UMC column names.
 2. Select all four files together. Types are detected by their headers, independently of selection order. Known date suffixes must agree with the selected cutoff.
 3. Review weekly targets. Unlimited memberships default to four sessions; fixed recurring weekly limits supply initial defaults. Package class credits do not supply a weekly target. A person with multiple eligible memberships uses the highest configured goal, rather than summing plan allowances. Saved targets prefill the next import.
-4. Choose **Check files & preview**. Check the date, eligible cohort, held suspensions, excluded products and future starts. Review the first 20 members, ordered by priority.
+4. Choose **Check files & preview**. Check both the Monday report week and the actual data-as-of date, eligible cohort, held suspensions, excluded products and future starts. Review the first 20 members, ordered by priority.
 5. Tick the review acknowledgement, then choose **Import reviewed week**. Only the final confirmation writes the reviewed snapshot to Supabase.
 
 ## Source checks
@@ -20,7 +20,7 @@ The cancellation file is validated and source counts are included in the private
 
 ## Risk evidence and history
 
-Existing Red / Yellow / Watch rules keep their first-match ordering. CSV imports use complete eligible attendance snapshots from preceding weeks, keyed by `clubworx:<Contact ID>`, with up to five preceding weekly slots. Missing weeks stay null, and a missing intervening week interrupts a consecutive-zero streak. Reimports ignore the existing same-week snapshot and future snapshots during classification.
+Existing Red / Yellow / Watch rules keep their first-match ordering. CSV imports use complete eligible attendance snapshots from preceding weeks, keyed by `clubworx:<Contact ID>`, with up to five preceding weekly slots. Comparisons use cutoffs exactly seven days apart, so a Tuesday export is compared with preceding Tuesdays rather than silently mixing Monday and Tuesday rolling totals. Legacy snapshots without an explicit cutoff use their report date. Missing weeks stay null, and a missing intervening week interrupts a consecutive-zero streak. Reimports ignore the existing same-week snapshot and future snapshots during classification.
 
 The four sample exports omit the source sheet's Engagement label. The converter does not infer Fringe. An optional `Engagement` column, if supplied, permits the existing Fringe slide and Watch rules. Below-target attendance without that label is **Review**, rather than Watch. Zero-attendance members without enough weekly evidence for Red/Yellow are also **Review**. Review is an operational request for missing context, not an additional inferred retention severity.
 
@@ -28,9 +28,11 @@ The first CSV cohort can be wider than the older tracked attendance cohort. Coun
 
 ## Storage and access
 
-The reviewed risk payload, complete eligible attendance snapshot, weekly targets and count summary are saved through the administrator-only transactional RPC. Existing report RLS, approved-staff access, append-only notes and temporary exemptions are preserved. Importing a week does not delete member identities or notes. A week with no risk/review members can still save a complete nonempty attendance snapshot.
+The reviewed risk payload, complete eligible attendance snapshot, weekly targets and count summary are saved through the administrator-only transactional RPC. Existing report RLS, approved-staff access, append-only notes and temporary exemptions are preserved. Importing a week does not delete member identities or notes. A fresh export during the same week replaces that week’s snapshot after review and records its new data-as-of date in the summary; the Monday grouping key stays the same. A week with no risk/review members can still save a complete nonempty attendance snapshot.
 
 Complete attendance snapshots live in `weekly_reports.attendance_snapshot`; import summaries and target settings live in `weekly_reports.import_summary`. Those fields are available only to approved staff. Raw CSV files and private source rows must never be committed or placed in the static hosting directory. The JSON path cannot replace an existing complete CSV snapshot without supplying the attendance snapshot as well. Provisional `name-v1:` identities must be reconciled before CSV imports are allowed.
+
+The data-as-of date must fall within the Monday report week and cannot be in the future. Attendance after that actual cutoff is still rejected, with the affected Contact ID and date shown. Validation errors appear at the top of the dialog and receive focus; the disabled save action explains that the issue must be resolved.
 
 Changing the files, cutoff or targets invalidates the accepted preview. The importer requires a fresh review before saving. Earlier report replacements do not recalculate already-saved later reports; reimport affected later weeks explicitly if a historical correction changes their evidence.
 

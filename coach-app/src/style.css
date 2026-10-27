@@ -2266,3 +2266,16 @@ tbody tr:hover {
 .risk-dot.review {
   background: #a1b8f4;
 }
+#import-error:not([hidden]) {
+  padding: 14px;
+  border: 1px solid #ac4055;
+  border-radius: 8px;
+  background: #3b1e32;
+  font-size: 13px;
+  outline-offset: 3px;
+}
+#import-progress {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}

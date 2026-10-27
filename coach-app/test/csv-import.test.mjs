@@ -213,3 +213,67 @@ test("cancellation flags and expiry dates do not count every raw record as a can
   assert.equal(s.flaggedCancellations, 2);
   assert.equal(s.effectiveCancellations, 1);
 });
+
+test("Tuesday exports use their actual cutoff while retaining the Monday report week", () => {
+  const rows = fixture({ s7: 1, s30: 4 });
+  rows.attendance[0]["Attendance Last Marked"] = "2026-10-27 09:00:00";
+  rows.active[0]["Membership Start Date"] = "2026-10-27";
+  const reports = readReports(filesFor(rows, "2026-10-27"));
+  const result = convertReports(
+    reports,
+    week,
+    { Unlimited: 4 },
+    [],
+    "2026-10-27",
+  );
+  assert.equal(result.payload.week, "2026-10-26");
+  assert.equal(result.summary.asOf, "2026-10-27");
+  assert.equal(result.summary.futureStartRows, 0);
+  assert.equal(result.summary.eligible, 1);
+  assert.throws(
+    () =>
+      convertReports(reports, "2026-10-19", { Unlimited: 4 }, [], "2026-10-27"),
+    /does not match the selected report week/,
+  );
+});
+
+test("cutoff dates drive suspension holds and history must be seven days apart", () => {
+  const rows = fixture({ s7: 0, s30: 0 });
+  const reports = readReports(filesFor(rows, "2026-10-27"));
+  const prior = {
+    week: "2026-10-19",
+    import_summary: { asOf: "2026-10-20" },
+    attendance_snapshot: [{ member_id: "clubworx:123", s7: 0, s30: 0 }],
+  };
+  assert.equal(
+    convertReports(reports, week, { Unlimited: 4 }, [prior], "2026-10-27")
+      .payload.members[0].priority,
+    "Red",
+  );
+  prior.import_summary.asOf = "2026-10-19";
+  assert.equal(
+    convertReports(reports, week, { Unlimited: 4 }, [prior], "2026-10-27")
+      .payload.members[0].priority,
+    "Review",
+  );
+  rows.suspensions = [
+    {
+      "Contact ID": "123",
+      "Full Name": "Fictional Member",
+      "Suspension Starts": "2026-10-27",
+      "Suspension Ends": "2026-11-01",
+      "Suspension Current?": "true",
+    },
+  ];
+  assert.throws(
+    () =>
+      convertReports(
+        readReports(filesFor(rows, "2026-10-27")),
+        week,
+        { Unlimited: 4 },
+        [],
+        "2026-10-27",
+      ),
+    /No eligible training members/,
+  );
+});

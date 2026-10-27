@@ -34,6 +34,15 @@ test("database access, atomic imports, notes, concurrency and history", async (t
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile(
+      new URL(
+        "../../supabase/migrations/20261027012401_csv_export_cutoff.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
   const login = async (id) => {
     await db.exec("reset role;");
     await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id]);
@@ -213,6 +222,22 @@ test("database access, atomic imports, notes, concurrency and history", async (t
       ).rows[0];
       assert.equal(report.attendance_snapshot.length, 2);
       assert.equal(report.import_summary.eligible, 2);
+      await importWeek({
+        ...csvPayload,
+        import_summary: { eligible: 2, asOf: "2026-10-27" },
+      });
+      assert.equal(
+        (
+          await db.query(
+            "select import_summary from weekly_reports where week='2026-10-26'",
+          )
+        ).rows[0].import_summary.asOf,
+        "2026-10-27",
+      );
+      await assert.rejects(
+        importWeek({ ...csvPayload, import_summary: { asOf: "2026-10-19" } }),
+        /Data-as-of date/,
+      );
       await importWeek({ ...csvPayload, week: "2026-11-09", members: [] });
       assert.equal(
         (
