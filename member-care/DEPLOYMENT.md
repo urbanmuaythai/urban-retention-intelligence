@@ -2,7 +2,7 @@
 
 Production entry: https://urbanmuaythai.github.io/urban-retention-intelligence/member-care/
 
-Published from the existing app source on branch `codex/coach-outreach`, commit `9fb9a5e34209b9fa88bcc75fa031ed25eb8722f8`.
+Published from the existing app source on branch `codex/coach-outreach`, commit `8f59544ddeab1fc006f894f36bc78cb2b3db7592`.
 
 Build from `coach-app` using Node 22 or later and the locked dependencies:
 
@@ -36,3 +36,6 @@ Drive pickup: the verified Clubworx Exports folder feeds a separate Codex deskto
 
 
 Weekly Reporting (28 October 2026): a read-only sidebar tab shows Red flagged/contacted/no-contact/coverage, priority breakdowns and selectable weekly history using saved reports and authorised notes already loaded by the app. Unique members count once per report week. Contacted means Contacted or Session booked; notes, Handled-only and Exempt-only are excluded from contact evidence. Valid exemptions remain separate; earlier contact does not roll into the next week. Latest saved cohorts are used, so reimports may change totals. No schema changes or live member writes were needed. Verified with 52 automated tests plus local and hosted browser workflows covering empty reports, deduplicated contacts, week switching, Red outreach navigation and mobile layout.
+
+
+Staff portal (28 October 2026): login opens a separate gym-photo portal with At Risk Members, Cancellations and Suspensions. Daily Numbers was removed. At Risk Members groups outreach, follow-ups, handled/exempt, all risk and Reporting; other modules have separate navigation and return-to-portal controls. The gym photo is the existing supplied clinch workshop image from Downloads, copied unchanged with a CSS overlay. Minimal weekly cancellation/suspension details and the established administrative cancellation exclusion policy are saved privately in the existing report summary; no source member files, policy IDs or raw CSVs are in this build. Existing source week was enriched without modifying risk rows or notes. Cancellations use effective ends Monday through the export cutoff and show notices separately; suspension periods use overlap. Missing details/policy remain unavailable/review. Verification: 56 tests and local/hosted production browser flows, including separate portal layout, positive cancellation display, grouped navigation and responsive screenshots.
