@@ -115,12 +115,12 @@ test("known Fringe labels retain Watch and cooling rules remain ordered", () => 
 test("package totals do not become weekly targets; unlimited teens default to four", () => {
   const reports = readReports(
     filesFor(
-      fixture({ plan: "10 Class Pass", limit: "10 classes", s7: 1, s30: 1 }),
+      fixture({ plan: "10 Session Pack", limit: "10 classes", s7: 1, s30: 1 }),
     ),
   );
   assert.equal(membershipTargets(reports)[0].target, null);
   assert.equal(
-    convertReports(reports, week, { "10 Class Pass": null }).payload.members
+    convertReports(reports, week, { "10 Session Pack": null }).payload.members
       .length,
     0,
   );
@@ -350,4 +350,24 @@ test("three attending weeks then zero is Red: on-target first, then broken routi
   assert.match(member.signal, /Was on target · 3 weeks at 4\+/);
   rows.history = [session("2026-08-31", "false"), session("2026-10-07"), session("2026-10-14")];
   assert.doesNotMatch(convert(rows).payload.members[0].signal, /Routine|on target/);
+});
+test("Kickstarter, trial, class-pass, sponsored and personal-training plans are never flagged", () => {
+  for (const plan of [
+    "Kickstarter Program Weekly",
+    "15 - 18 years Kickstarter Program - Upfront",
+    "Sponsored",
+    "Kids 7-10 years ( 2 x classes) - Sponsored",
+    "Personal Trainer",
+    "10 Class Pass",
+    "Teens 1 Week Trial",
+  ]) {
+    const rows = fixture({ plan, limit: "Unlimited classes" });
+    assert.throws(() => convert(rows), /No eligible training members/, plan);
+  }
+  const both = fixture({ duplicate: true });
+  both.attendance[1]["Membership Name"] = "Sponsored";
+  both.active[1]["Membership Name"] = "Sponsored";
+  const { payload, summary } = convert(both);
+  assert.equal(payload.attendance_snapshot.length, 1, "a regular plan alongside keeps the member");
+  assert.equal(summary.excludedPlanRows, 1);
 });

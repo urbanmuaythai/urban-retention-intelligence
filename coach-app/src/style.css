@@ -3053,3 +3053,234 @@ tbody tr:hover {
     border-radius: 999px;
   }
 }
+/* Phone At Risk screen: brand and portal button on one row, a compact menu,
+   report week first, small centred headline and four small counts. */
+@media (max-width: 760px) {
+  .sidebar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+  }
+  .sidebar .brand {
+    font-size: 15px;
+  }
+  .sidebar .brand-logo {
+    width: 34px;
+    height: 34px;
+  }
+  .sidebar .portal-return {
+    margin: 0;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+  .sidebar nav {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+    gap: 6px;
+    margin: 0;
+  }
+  .sidebar .nav-item {
+    justify-content: center;
+    padding: 7px 6px;
+    font-size: 10px;
+    gap: 5px;
+    border-radius: 8px;
+  }
+  .sidebar .nav-item svg {
+    display: none;
+  }
+  .topbar {
+    height: auto;
+    min-height: 34px;
+    padding: 4px 15px;
+    justify-content: flex-end;
+  }
+  .topbar > div:first-child {
+    display: none;
+  }
+  .main-shell main .page-heading {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .main-shell main .page-heading > div:first-child {
+    order: 2;
+  }
+  .main-shell main .page-heading .heading-actions {
+    order: 1;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .main-shell main .page-heading .week-control {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .main-shell main .page-heading #import-open {
+    flex: 0 0 auto;
+    padding: 0 12px;
+    font-size: 11px;
+  }
+  .main-shell main .page-heading .eyebrow {
+    display: none;
+  }
+  .main-shell main .page-heading h1 {
+    font-size: clamp(22px, 7vw, 28px);
+  }
+  .main-shell main .page-heading p {
+    font-size: 11px;
+    margin-top: 4px;
+  }
+  .metric-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .metric-grid .metric {
+    min-height: 0;
+    padding: 10px 4px 9px;
+    text-align: center;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    gap: 4px;
+  }
+  .metric-grid .metric strong {
+    font-size: clamp(20px, 6.4vw, 26px);
+    line-height: 1;
+    margin: 0;
+  }
+  .metric-grid .metric .metric-top {
+    justify-content: center;
+    font-size: clamp(9px, 2.6vw, 10px);
+    line-height: 1.25;
+  }
+  .metric-grid .metric .metric-icon,
+  .metric-grid .metric small {
+    display: none;
+  }
+  .weekly-progress {
+    padding: 10px 14px;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .weekly-progress .progress-symbol,
+  .weekly-progress .progress-copy span {
+    display: none;
+  }
+  .weekly-progress .progress-copy strong {
+    font-size: 12px;
+  }
+}
+/* Phone portal header: brand centred, refresh and sign out on one small row. */
+@media (max-width: 600px) {
+  .portal-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .portal-brand {
+    justify-content: center;
+    text-align: left;
+  }
+  .portal-account {
+    flex-wrap: nowrap;
+    justify-content: center;
+  }
+}
+@media (max-width: 760px) {
+  main:not(.login-page) {
+    padding-top: 14px;
+  }
+  .main-shell main .page-heading .heading-actions > * {
+    align-self: stretch;
+  }
+  .weekly-progress {
+    display: block;
+  }
+  .weekly-progress .progress-copy {
+    margin-bottom: 6px;
+    text-align: center;
+  }
+  .queue-panel .panel-heading {
+    padding: 14px 15px 10px;
+    text-align: center;
+    justify-content: center;
+  }
+  .queue-panel .panel-heading h2 {
+    font-size: 20px;
+  }
+  .queue-panel .panel-heading p,
+  .queue-panel .panel-heading .subtle {
+    display: none;
+  }
+  .queue-panel .filters {
+    padding: 0 12px 12px;
+    gap: 8px;
+  }
+  .priority-filters .filter {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+}
+@media (max-width: 760px) {
+  .queue-panel .filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .queue-panel .priority-filters {
+    grid-column: 1 / -1;
+    justify-content: center;
+    gap: 4px;
+  }
+  .priority-filters .filter {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+  .queue-panel .stage-filter {
+    font-size: 0;
+    gap: 0;
+    margin: 0;
+  }
+  .queue-panel .stage-filter select {
+    width: 100%;
+    height: 100%;
+    min-height: 36px;
+    font-size: 12px;
+  }
+  .queue-panel .search {
+    min-width: 0;
+    width: auto;
+    min-height: 36px;
+  }
+  .queue-panel .search input {
+    min-width: 0;
+    font-size: 12px;
+  }
+}
+@media (max-width: 600px) {
+  .portal-main .page-heading {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .portal-main .page-heading p,
+  .portal-main .report-period {
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .portal-main .week-control {
+    justify-content: center;
+    min-width: 220px;
+  }
+  .portal-account > span {
+    display: none;
+  }
+}

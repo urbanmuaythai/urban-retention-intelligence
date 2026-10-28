@@ -59,6 +59,10 @@ export const reportLabels = {
   history: "Attendance history",
 };
 const requiredReports = ["attendance", "active", "suspensions", "cancellations"];
+// Plans that never need retention outreach: trials, Kickstarter, class packs,
+// sponsored members and personal training.
+const excludedPlan = (name) =>
+  /kickstarter|sponsored|personal trainer|class pass|\btrials?\b/.test(norm(name));
 const nonTraining = (name) =>
   /^thailand tour (deposit|final payment)$/.test(norm(name));
 const date = (value, label, optional = false) => {
@@ -226,7 +230,7 @@ export function membershipTargets(reports) {
   for (const row of reports.attendance.rows) {
     const name = row["Membership Name"],
       limit = row["Membership Attendance Limit (Description)"];
-    if (nonTraining(name)) continue;
+    if (nonTraining(name) || excludedPlan(name)) continue;
     if (!grouped.has(name)) grouped.set(name, new Set());
     grouped.get(name).add(limit);
   }
@@ -389,7 +393,8 @@ export function convertReports(
   }
   const membershipIds = new Set();
   let futureStarts = 0,
-    excludedProducts = 0;
+    excludedProducts = 0,
+    excludedPlans = 0;
   for (const row of reports.active.rows) {
     const id = row["Contact ID"],
       mid = row["Membership ID"];
@@ -411,6 +416,10 @@ export function convertReports(
       throw Error(`Membership ID ${mid} ends before it starts.`);
     const active = flag(row["Membership Active?"], "Membership Active?");
     if (!roster.has(id)) roster.set(id, []);
+    if (excludedPlan(row["Membership Name"])) {
+      excludedPlans++;
+      continue;
+    }
     if (nonTraining(row["Membership Name"])) {
       excludedProducts++;
       continue;
@@ -619,6 +628,7 @@ export function convertReports(
     currentSuspensions: held,
     suspensionStatusHeld: statusHeld,
     excludedProductRows: excludedProducts,
+    excludedPlanRows: excludedPlans,
     futureStartRows: futureStarts,
     noEligibleMembership: noMembership,
     noPriorWeeklyHistory: noHistory,
