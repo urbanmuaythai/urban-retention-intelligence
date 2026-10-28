@@ -57,3 +57,6 @@ Installable app (28 October 2026): web app manifest, Urban logo icons (192, 512,
 
 
 Phone layout (28 October 2026): no sideways scrolling from 320px; list tables become labelled cards below 760px; section menu and heading actions wrap; compact phone portal with circular icons so all three sections show on one screen. Source commit `409695e`.
+
+
+Compact phone cards and circle portal (28 October 2026): reach-out members show as short cards that scale with width; phone portal uses three round widgets in one row. Source commit `e5f98ce`.
