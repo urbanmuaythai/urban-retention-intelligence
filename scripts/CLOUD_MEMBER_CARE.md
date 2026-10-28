@@ -4,7 +4,7 @@ The installed Google Apps Script runs independently of this computer. It checks 
 
 ## One-time activation (getfit@urbanmuaythai.com)
 
-1. Open https://script.google.com/home/start in the gym Google account. Create a standalone project named **Urban Member Care sync**.
+1. Open the [existing Urban Member Care Apps Script project](https://script.google.com/d/1usjYskQJNjak8XrnYTnWe2EML_fuo9yrbtY4aiezSdueBIhnJPF85VtY/edit) in the gym Google account. The user has already created this project; do not create a duplicate.
 2. Replace `Code.gs` with the complete contents of `scripts/member-care-trigger.gs` and save.
 3. In Project Settings, turn on **Show appsscript.json manifest file in editor**. Open that file and replace it with `scripts/member-care-appsscript.json`. This limits Drive permission to reading; the other two permissions allow the Member Care request and your two triggers.
 4. Open Project Settings > Script properties. Add `MEMBER_CARE_TOKEN` using only the `token` value from `../member-care-trigger-activation.private.json` outside this repository. This is an integration token, not a Supabase service key. Keep the project restricted to authorised administrators; project editors can read script properties.
