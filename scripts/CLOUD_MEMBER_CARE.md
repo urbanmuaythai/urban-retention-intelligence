@@ -1,5 +1,7 @@
 # Google trigger for Member Care
 
+Activation confirmed by the user on 28 October 2026: the installer succeeded and the two Google triggers are listed. The Codex fallback `sync-clubworx-exports-to-member-care` is now **PAUSED**, verified through the app automation tool and saved configuration. The setup steps below are retained for maintenance or reinstalling; do not create duplicate projects or schedules.
+
 The installed Google Apps Script runs independently of this computer. It checks the verified Clubworx Exports folder Monday and Friday around 09:00 Australia/Brisbane. Google's `nearMinute(0)` timing is approximate (plus or minus 15 minutes). This is a scheduled folder check, not an instant Drive file-created event. It does not generate Clubworx exports: all four reports must already arrive through the existing export workflow before the check.
 
 ## One-time activation (getfit@urbanmuaythai.com)
