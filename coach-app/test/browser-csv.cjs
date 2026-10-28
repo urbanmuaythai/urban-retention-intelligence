@@ -8,7 +8,9 @@ const assert = require("node:assert/strict");
     const errors = [];
     let imported = null;
     const baselines = [];
-    const reportEvents = [], olderReports = [], olderRisks = [];
+    const reportEvents = [],
+      olderReports = [],
+      olderRisks = [];
     page.on("pageerror", (e) => errors.push(e.message));
     const uid = "00000000-0000-4000-8000-000000000001";
     const jwt =
@@ -69,7 +71,10 @@ const assert = require("node:assert/strict");
           revision: 0,
         }));
       else if (imported && url.pathname.endsWith("/weekly_risks"))
-        body = [...olderRisks, ...imported.members.map((m) => ({ ...m, week: imported.week }))];
+        body = [
+          ...olderRisks,
+          ...imported.members.map((m) => ({ ...m, week: imported.week })),
+        ];
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -83,9 +88,31 @@ const assert = require("node:assert/strict");
     await page.locator("#email").fill("admin@example.test");
     await page.locator("#password").fill("fictional-test-password");
     await page.locator("#login-submit").click();
+    await page.locator(".workspace-choices").waitFor();
+    assert.equal(
+      await page.locator(".sidebar").count(),
+      0,
+      "Login opens a separate portal",
+    );
+    assert.match(
+      await page
+        .locator(".member-portal")
+        .evaluate((el) => getComputedStyle(el, "::before").backgroundImage),
+      /urban-gym-community/,
+    );
+    assert.equal(await page.locator(".workspace-choices button").count(), 3);
+    await page.locator('.workspace-choices [data-view="queue"]').click();
     await page.locator("#import-open").waitFor();
+    assert.equal(
+      await page.locator('nav [data-view="cancellations"]').count(),
+      0,
+      "At Risk navigation stays in one workspace",
+    );
     await page.locator('[data-view="reporting"]').click();
-    assert.match(await page.locator('main').innerText(), /No weekly reports yet/);
+    assert.match(
+      await page.locator("main").innerText(),
+      /No weekly reports yet/,
+    );
     await page.locator('[data-view="queue"]').click();
     await page.locator("#import-open").click();
     const fileInputs = filesFor(
@@ -232,6 +259,7 @@ const assert = require("node:assert/strict");
     await archiveRead;
     await page.locator("#import-open").click();
     const zeroRows = fixture({ s7: 0, s30: 4 });
+    zeroRows.cancellations[0]["Membership Expiry Date"] = "2026-10-27";
     const zeroFiles = filesFor(zeroRows).map((f, i) => ({
       name: `new_export_${i}.csv`,
       mimeType: "text/csv",
@@ -320,28 +348,137 @@ const assert = require("node:assert/strict");
       "Keep this draft while checking attendance.",
     );
     await page.locator("#close-member").click();
-    olderReports.push({week:"2026-10-19", import_summary:{asOf:"2026-10-19"}});
-    olderRisks.push({...imported.members[0],week:"2026-10-19"});
-    reportEvents.push(
-      {id:"note-a",member_id:"clubworx:123",week:imported.week,status:"contacted",sequence:1,created_at:"2026-10-27T01:00:00Z"},
-      {id:"note-b",member_id:"clubworx:123",week:imported.week,status:"booked",sequence:2,created_at:"2026-10-27T02:00:00Z"},
-      {id:"note-c",member_id:"clubworx:123",week:"2026-10-19",status:null,sequence:3,created_at:"2026-10-27T02:00:00Z"}
+    await page.locator('[data-view="home"]').first().click();
+    assert.equal(await page.locator(".workspace-choices button").count(), 3);
+    assert.equal(
+      await page.getByText("Daily Numbers", { exact: true }).count(),
+      0,
     );
-    const reportingRead = page.waitForResponse(r => r.url().includes('/rest/v1/outreach_events'));
-    await page.locator('#refresh').click(); await reportingRead;
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > innerWidth + 1,
+      ),
+      false,
+    );
+    await page.screenshot({
+      path: "test-results/workspace-home-mobile.png",
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.screenshot({
+      path: "test-results/workspace-portal-desktop.png",
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page
+      .locator('.workspace-choices [data-view="cancellations"]')
+      .click();
+    assert.match(
+      await page.locator("main").innerText(),
+      /Retention exclusions need review/,
+    );
+    imported.import_summary.retentionPolicy = {
+      version: 1,
+      excludedMembershipIds: [],
+    };
+    imported.import_summary.operations.policyApplied = true;
+    const operationRead = page.waitForResponse((r) =>
+      r.url().includes("/rest/v1/weekly_reports"),
+    );
+    await page.locator("#refresh").click();
+    await operationRead;
+    await page.getByRole("heading", {name:"Memberships ending this week",exact:true}).waitFor();
+    assert.equal(await page.locator("main tbody tr").count(), 1);
+    assert.match(await page.locator("main tbody").innerText(), /Moved/);
+    assert.equal(await page.locator('nav [data-view="due"]').count(), 0);
+    await page.locator('main [data-view="home"]').click();
+    await page.locator('.workspace-choices [data-view="suspensions"]').click();
+    assert.match(
+      await page.locator("main").innerText(),
+      /Suspensions during this week/,
+    );
+    await page.locator('main [data-view="home"]').click();
+    await page.locator('.workspace-choices [data-view="queue"]').click();
+    olderReports.push({
+      week: "2026-10-19",
+      import_summary: { asOf: "2026-10-19" },
+    });
+    olderRisks.push({ ...imported.members[0], week: "2026-10-19" });
+    reportEvents.push(
+      {
+        id: "note-a",
+        member_id: "clubworx:123",
+        week: imported.week,
+        status: "contacted",
+        sequence: 1,
+        created_at: "2026-10-27T01:00:00Z",
+      },
+      {
+        id: "note-b",
+        member_id: "clubworx:123",
+        week: imported.week,
+        status: "booked",
+        sequence: 2,
+        created_at: "2026-10-27T02:00:00Z",
+      },
+      {
+        id: "note-c",
+        member_id: "clubworx:123",
+        week: "2026-10-19",
+        status: null,
+        sequence: 3,
+        created_at: "2026-10-27T02:00:00Z",
+      },
+    );
+    const reportingRead = page.waitForResponse((r) =>
+      r.url().includes("/rest/v1/outreach_events"),
+    );
+    await page.locator("#refresh").click();
+    await reportingRead;
     await page.locator('[data-view="reporting"]').click();
-    await page.getByRole('heading', {name:'Weekly reporting.'}).waitFor();
-    const reportRows = page.locator('.reporting-panel').first().locator('tbody tr');
-    assert.deepEqual(await reportRows.first().locator('td').allTextContents(), ['1','1','0','100%','0']);
-    assert.equal(await page.locator('[data-report-week]').count(),2);
+    await page.getByRole("heading", { name: "Weekly reporting." }).waitFor();
+    const reportRows = page
+      .locator(".reporting-panel")
+      .first()
+      .locator("tbody tr");
+    assert.deepEqual(await reportRows.first().locator("td").allTextContents(), [
+      "1",
+      "1",
+      "0",
+      "100%",
+      "0",
+    ]);
+    assert.equal(await page.locator("[data-report-week]").count(), 2);
     await page.locator('[data-report-week="2026-10-19"]').click();
-    assert.deepEqual(await page.locator('.reporting-panel').first().locator('tbody tr').first().locator('td').allTextContents(), ['1','0','1','0%','0']);
-    await page.locator('#week').selectOption('2026-10-26');
-    await page.locator('#report-open-red').click();
-    assert.equal(await page.locator('[data-priority="Red"]').getAttribute('aria-pressed'),'true');
+    assert.deepEqual(
+      await page
+        .locator(".reporting-panel")
+        .first()
+        .locator("tbody tr")
+        .first()
+        .locator("td")
+        .allTextContents(),
+      ["1", "0", "1", "0%", "0"],
+    );
+    await page.locator("#week").selectOption("2026-10-26");
+    await page.locator("#report-open-red").click();
+    assert.equal(
+      await page.locator('[data-priority="Red"]').getAttribute("aria-pressed"),
+      "true",
+    );
     await page.locator('[data-view="reporting"]').click();
-    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth > innerWidth+1),false,'Reporting fits mobile viewport');
-    await page.screenshot({path:'test-results/weekly-reporting-mobile.png', fullPage:true});
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > innerWidth + 1,
+      ),
+      false,
+      "Reporting fits mobile viewport",
+    );
+    await page.screenshot({
+      path: "test-results/weekly-reporting-mobile.png",
+      fullPage: true,
+    });
     assert.deepEqual(errors, []);
     console.log(
       "PASS: production CSV picker, preview, identity review, stale-preview invalidation, mobile dialog, SDK import and Review filter (mocked Supabase; no live data written)",

@@ -2470,5 +2470,317 @@ tbody tr:hover {
   }
 }
 
-.report-scroll-hint { display: none; color: var(--muted); font-size: 11px; padding: 0 16px 12px; margin: 0; }
-@media (max-width: 760px) { .report-scroll-hint { display: block; } }
+.report-scroll-hint {
+  display: none;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 0 16px 12px;
+  margin: 0;
+}
+@media (max-width: 760px) {
+  .report-scroll-hint {
+    display: block;
+  }
+}
+
+.workspace-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.workspace-choice {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  text-align: left;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--gold);
+  border-radius: 14px;
+  background: #181c37;
+  color: #edf1ff;
+  cursor: pointer;
+}
+.workspace-choice:hover {
+  background: #232a49;
+  border-color: var(--gold);
+}
+.workspace-choice:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 4px;
+}
+.choice-icon {
+  color: var(--gold);
+  grid-column: 1 / -1;
+}
+.choice-heading {
+  font-size: 22px;
+  font-weight: 800;
+}
+.choice-count {
+  font-size: 22px;
+  color: var(--gold);
+  font-weight: 700;
+}
+.choice-detail {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.choice-link {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 12px;
+}
+.choice-link svg {
+  width: 16px;
+}
+@media (max-width: 700px) {
+  .workspace-choices {
+    grid-template-columns: 1fr;
+  }
+  .workspace-choice {
+    padding: 22px;
+  }
+  .choice-heading,
+  .choice-count {
+    font-size: 19px;
+  }
+}
+
+.brand-button {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+.portal-return {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 10px 12px;
+  margin: 18px 0;
+  background: #202741;
+  color: #f0f3ff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.portal-return svg {
+  width: 16px;
+}
+.member-portal {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  padding: 36px 5vw 26px;
+  display: flex;
+  flex-direction: column;
+  background: #0b1020;
+}
+.member-portal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image: var(--portal-photo);
+  background-size: cover;
+  background-position: center 42%;
+}
+.member-portal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 12, 24, 0.76) 0%,
+    rgba(8, 12, 24, 0.58) 35%,
+    rgba(8, 12, 24, 0.91) 100%
+  );
+}
+.portal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+}
+.portal-brand {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+.portal-brand img {
+  object-fit: contain;
+}
+.portal-brand strong {
+  display: block;
+  color: #fff;
+  font-size: 20px;
+  letter-spacing: 2px;
+}
+.portal-brand span {
+  display: block;
+  color: var(--gold);
+  font-size: 10px;
+  letter-spacing: 4px;
+  margin-top: 7px;
+}
+.portal-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #d3daee;
+  font-size: 12px;
+}
+.portal-account .button {
+  background: #11182bc9;
+}
+.portal-main {
+  width: 100%;
+  max-width: 1320px;
+  margin: auto;
+  padding: 90px 0 70px;
+}
+.portal-main .page-heading {
+  align-items: flex-end;
+}
+.portal-main h1 {
+  font-size: clamp(46px, 5.2vw, 78px);
+  line-height: 1.05;
+}
+.portal-main .page-heading p {
+  max-width: 560px;
+  color: #e1e6f2;
+  font-size: 15px;
+}
+.portal-main .eyebrow {
+  color: var(--gold);
+}
+.portal-main .week-control {
+  background: #10182bd9;
+}
+.portal-main .report-period {
+  color: #e1e6f2;
+  margin-bottom: 24px;
+}
+.portal-main .workspace-choices {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+.portal-main .workspace-choice {
+  min-height: 270px;
+  background: rgba(14, 21, 40, 0.86);
+  backdrop-filter: blur(12px);
+  border-color: #a5b4d34a;
+  border-top: 3px solid var(--gold);
+  padding: 30px;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.portal-main .workspace-choice:first-child {
+  border-top-color: var(--red);
+}
+.portal-main .workspace-choice:hover {
+  background: rgba(30, 40, 66, 0.96);
+  border-color: var(--gold);
+}
+.portal-main .choice-icon svg {
+  width: 30px;
+  height: 30px;
+}
+.portal-main .choice-heading {
+  font-size: 24px;
+}
+.portal-main .choice-count {
+  font-size: 26px;
+}
+.portal-main .choice-detail {
+  color: #cdd6eb;
+}
+.portal-footer {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: #c2cbe0;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  line-height: 1.7;
+}
+.portal-footer span {
+  letter-spacing: 0.2px;
+}
+@media (max-width: 800px) {
+  .member-portal {
+    padding: 22px 20px;
+  }
+  .portal-header {
+    align-items: flex-start;
+  }
+  .portal-brand img {
+    width: 48px;
+    height: 48px;
+  }
+  .portal-brand {
+    gap: 10px;
+  }
+  .portal-brand strong {
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+  .portal-brand span {
+    font-size: 9px;
+    letter-spacing: 2px;
+  }
+  .portal-account {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  .portal-account > span {
+    display: none;
+  }
+  .portal-account .button {
+    font-size: 11px;
+    padding: 9px;
+  }
+  .portal-main {
+    padding: 64px 0 40px;
+  }
+  .portal-main .workspace-choices {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .portal-main .workspace-choice {
+    min-height: 210px;
+    padding: 24px;
+  }
+  .portal-main .page-heading {
+    gap: 22px;
+  }
+  .portal-footer {
+    flex-direction: column;
+    gap: 6px;
+    font-size: 9px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .portal-main .workspace-choice {
+    transition: none;
+  }
+}

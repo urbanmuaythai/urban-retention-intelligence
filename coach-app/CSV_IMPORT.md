@@ -16,7 +16,7 @@ Contact IDs must be populated. Membership IDs must be unique within each members
 
 Training eligibility checks membership activity, start/expiry and status. Thailand Tour Deposit and Thailand Tour Final Payment are excluded products, while an independent eligible training membership for the same contact is retained. Current suspensions are determined from the selected cutoff and start/end dates; contacts whose eligible memberships are all marked Suspended are held even if no current date interval appears.
 
-The cancellation file is validated and source counts are included in the private import summary. Raw cancellation rows are not saved. The preview's effective cancellation count is before the full Retention Intelligence report's date window and administrative bad-debt exclusions. This feature does not replace that report or publish a cancellation KPI.
+The cancellation file is validated and source counts are included in the private import summary. Raw CSV files are not saved. Minimal derived cancellation details for the selected Monday-through-cutoff window are saved privately for the Cancellations module, along with overlapping suspension periods. The preview's effective cancellation count is before the full Retention Intelligence report's date window and administrative bad-debt exclusions. This feature does not replace that report or publish a cancellation KPI.
 
 ## Risk evidence and history
 
@@ -61,3 +61,6 @@ Attendance stages (27 October 2026): imports now resolve seven prior observation
 
 
 Selecting a complete four-file batch automatically prepares the review; it does not silently save. Invalid or incomplete batches remain paused. Changing dates or targets invalidates the preview and requires a recheck. Drive pickup uses the connected Codex desktop automation described in `scripts/DRIVE_MEMBER_CARE.md`; it requires this computer and Codex to remain available. Clubworx supports scheduled report emails (https://intercom.help/clubworx/en/articles/5000502-how-to-schedule-regular-report-exports); the delivery account, a complete same-cutoff batch and authenticated ingestion must be connected before claiming automatic weekly sync.
+
+
+The staff portal separates At Risk Members, Cancellations and Suspensions. The cancellation module uses effective membership end dates within the selected week through the source cutoff, while separately counting notices recorded in that week. It requires the existing approved private retentionPolicy before displaying the adjusted KPI. Rollovers, configured administrative cleanup and tour products are excluded. Suspension source lists count overlapping periods/unique people and distinguish current-at-cutoff from ended-this-week periods. Daily Numbers was removed at the user's request. Original raw historical rows and credentials are not committed or published.

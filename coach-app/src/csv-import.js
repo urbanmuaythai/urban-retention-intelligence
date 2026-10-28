@@ -1,3 +1,4 @@
+import { buildOperations } from "./operations.js";
 import { addDays, norm, validateImport } from "./domain.js";
 import { resolveHistory, archivedEngagement } from "./history.js";
 
@@ -526,7 +527,14 @@ export function convertReports(
       a.s7 - b.s7 ||
       a.name.localeCompare(b.name),
   );
+  const retentionPolicy =
+    [...history]
+      .sort((a, b) => b.week.localeCompare(a.week))
+      .find((w) => w.import_summary?.retentionPolicy)?.import_summary
+      .retentionPolicy || null;
   const summary = {
+    retentionPolicy,
+    operations: buildOperations(reports, week, asOf, retentionPolicy),
     targets,
 
     asOf,
