@@ -48,3 +48,6 @@ Cancellation history release (28 October 2026): selected and previous Friday-Thu
 
 
 Red rules and attendance history (28 October 2026): Red also flags "Was on target" (met the weekly target in each of the previous three weeks, then 0), "Routine broken" (attended in each of the previous three weeks, then 0) and "No sessions found · last 7 weeks" (missing weeks count as no session found; first-week members stay Review). The import accepts Clubworx UMC 05 Attendance History (246642) as an optional fifth CSV; earlier weekly bars it fully covers are counted from real session dates. Automatic pickup still needs the four core reports and adds UMC 05 only from the same export batch. Existing saved reports change at the next import. Source commit `e7ceeeb` on `codex/coach-outreach`. Verified with 70 automated tests and the production-build mobile CSV browser workflow (mocked Supabase) including a five-file preview. The cloud import function must be redeployed to accept five-file batches.
+
+
+Five-file database fix (28 October 2026): the database import now accepts the optional UMC 05 file (migration `20261028080000_drive_batch_attendance_history.sql`, applied live). Import banner names five-file batches and the 30-minute Google check. Source commit `de6ceba`.
