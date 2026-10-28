@@ -60,3 +60,6 @@ Phone layout (28 October 2026): no sideways scrolling from 320px; list tables be
 
 
 Compact phone cards and circle portal (28 October 2026): reach-out members show as short cards that scale with width; phone portal uses three round widgets in one row. Source commit `e5f98ce`.
+
+
+Minimal phone cards (28 October 2026): member, stage and reason only; priority stripe; status chip after an outcome; tap a card to open the member panel. Source commit `de92ca2`.
