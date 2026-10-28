@@ -2,7 +2,7 @@
 
 Production entry: https://urbanmuaythai.github.io/urban-retention-intelligence/member-care/
 
-Published from the existing app source on branch `codex/coach-outreach`, commit `8f59544ddeab1fc006f894f36bc78cb2b3db7592`.
+Published from the existing app source on branch `codex/coach-outreach`, commit `08c87423dbdffe7cc076e5bd23f19df7e3804181`.
 
 Build from `coach-app` using Node 22 or later and the locked dependencies:
 
@@ -39,3 +39,6 @@ Weekly Reporting (28 October 2026): a read-only sidebar tab shows Red flagged/co
 
 
 Staff portal (28 October 2026): login opens a separate gym-photo portal with At Risk Members, Cancellations and Suspensions. Daily Numbers was removed. At Risk Members groups outreach, follow-ups, handled/exempt, all risk and Reporting; other modules have separate navigation and return-to-portal controls. The gym photo is the existing supplied clinch workshop image from Downloads, copied unchanged with a CSS overlay. Minimal weekly cancellation/suspension details and the established administrative cancellation exclusion policy are saved privately in the existing report summary; no source member files, policy IDs or raw CSVs are in this build. Existing source week was enriched without modifying risk rows or notes. Cancellations use effective ends Monday through the export cutoff and show notices separately; suspension periods use overlap. Missing details/policy remain unavailable/review. Verification: 56 tests and local/hosted production browser flows, including separate portal layout, positive cancellation display, grouped navigation and responsive screenshots.
+
+
+Friday–Thursday operational periods (28 October 2026): Cancellations and Suspensions now use inclusive Friday-to-Thursday dates in Brisbane, with a separate period selector and source/records-through dates. The At Risk Monday report key is unchanged. Version 2 operations retains current and prior completed source periods, preserves same-Monday Friday rollovers and deduplicates period keys across reports. A Friday export defaults to the just-completed Thursday period for its selected Monday report week. Monday-only legacy details are refused until rebuilt; the current saved report was rebuilt from hash-matched full CSVs without changing risk cases or notes. Saved automation schedule was verified as ACTIVE daily at 09:00 Brisbane; older 30-minute cadence descriptions were incorrect. Export all four reports after Thursday's final class for pickup by Friday's desktop-dependent check; Clubworx export scheduling remains separate. Verified with 59 tests and local/hosted production browser checks for period switching and no cross-week leakage.
