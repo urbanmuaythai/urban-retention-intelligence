@@ -63,3 +63,6 @@ Compact phone cards and circle portal (28 October 2026): reach-out members show 
 
 
 Minimal phone cards (28 October 2026): member, stage and reason only; priority stripe; status chip after an outcome; tap a card to open the member panel. Source commit `de92ca2`.
+
+
+Plan exclusions and phone layout (28 October 2026): Kickstarter, Sponsored, Personal Trainer, Class Pass and Trial memberships are skipped at import; compact phone At Risk header, counts and filters; centred phone portal header; app named Urban Muaythai Member Care. Source commit `093700e`.

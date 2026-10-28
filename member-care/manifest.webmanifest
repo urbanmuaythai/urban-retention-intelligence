@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Urban Member Care",
-  "short_name": "Member Care",
+  "name": "Urban Muaythai Member Care",
+  "short_name": "UMT Member Care",
   "description": "Urban Muaythai staff portal for at-risk members, cancellations and suspensions.",
   "start_url": "./",
   "scope": "./",
