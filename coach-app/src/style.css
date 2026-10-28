@@ -2966,19 +2966,31 @@ tbody tr:hover {
     display: none;
   }
 }
-/* Phone reach-out list: one compact card per member.
-   Name and open arrow, then the risk line, then weeks and outreach status. */
+/* Phone reach-out list: a minimal card per member. Name, then the stage and
+   reason. Priority shows as the left stripe; attendance lives in the member
+   panel. A status chip appears once an outcome is saved. */
 @media (max-width: 760px) {
   .queue-panel tbody tr:has(.member-button) {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     grid-template-areas:
-      "member open"
-      "risk risk"
-      "weeks status";
-    gap: 8px 12px;
+      "member status open"
+      "risk risk risk";
+    gap: 6px 10px;
     align-items: center;
-    padding: clamp(10px, 3.2vw, 14px) clamp(12px, 4vw, 16px);
+    padding: clamp(10px, 3vw, 13px) clamp(12px, 4vw, 16px);
+    border-left: 4px solid transparent;
+    cursor: pointer;
+  }
+  .queue-panel tbody tr:has(.priority-pill.red) {
+    border-left-color: var(--red);
+  }
+  .queue-panel tbody tr:has(.priority-pill.yellow) {
+    border-left-color: var(--gold);
+  }
+  .queue-panel tbody tr:has(.priority-pill.watch),
+  .queue-panel tbody tr:has(.priority-pill.review) {
+    border-left-color: #8a96b8;
   }
   .queue-panel tbody tr:has(.member-button) td,
   .queue-panel tbody tr:has(.member-button) td:first-child,
@@ -2998,24 +3010,24 @@ tbody tr:hover {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 5px 8px;
+    gap: 4px 8px;
   }
-  .queue-panel tbody tr:has(.member-button) td:nth-child(3) {
-    grid-area: weeks;
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
+  .queue-panel tbody tr:has(.member-button) td:nth-child(3),
+  .queue-panel td .priority-pill,
+  .queue-panel td .stage-detail,
+  .queue-panel td .status-detail,
+  .queue-panel td .status-label[data-status="open"] {
+    display: none;
   }
   .queue-panel tbody tr:has(.member-button) td:nth-child(4) {
     grid-area: status;
-    text-align: right;
   }
   .queue-panel tbody tr:has(.member-button) td:nth-child(5) {
     grid-area: open;
   }
   .queue-panel .member-button .avatar {
-    width: clamp(30px, 9vw, 36px);
-    height: clamp(30px, 9vw, 36px);
+    width: clamp(30px, 9vw, 34px);
+    height: clamp(30px, 9vw, 34px);
     font-size: 11px;
   }
   .queue-panel .member-button strong {
@@ -3025,22 +3037,19 @@ tbody tr:hover {
     margin-top: 2px;
     font-size: 11px;
   }
-  .queue-panel td .stage-detail,
-  .queue-panel td .status-detail {
-    display: none;
-  }
   .queue-panel td .signal {
     margin: 0;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.4;
   }
-  .queue-panel td .session-label {
-    margin: 0 0 0 4px;
-    font-size: 10px;
-    white-space: nowrap;
+  .priority-filters {
+    flex-wrap: wrap;
   }
   .queue-panel td .status-label {
-    font-size: 11px;
+    font-size: 10px;
     white-space: nowrap;
+    padding: 4px 8px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
   }
 }
