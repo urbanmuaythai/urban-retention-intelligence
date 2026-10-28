@@ -382,7 +382,21 @@ const assert = require("node:assert/strict");
       version: 1,
       excludedMembershipIds: [],
     };
-    for (const period of imported.import_summary.operations.periods)
+    imported.import_summary.operations.scheduledCancellations = [
+      {
+        member_id: "clubworx:future-fictional",
+        name: "Fictional Future Member",
+        membership_id: "future-fictional",
+        membership: "Unlimited",
+        end: "2026-11-12",
+        recorded: "2026-10-27",
+        reason: "Moving away",
+      },
+    ];
+    for (const period of [
+      ...imported.import_summary.operations.periods,
+      ...imported.import_summary.operations.cancellationHistory,
+    ])
       period.policyApplied = true;
     const operationRead = page.waitForResponse((r) =>
       r.url().includes("/rest/v1/weekly_reports"),
@@ -395,8 +409,43 @@ const assert = require("node:assert/strict");
         exact: true,
       })
       .waitFor();
-    assert.equal(await page.locator("main tbody tr").count(), 1);
-    assert.match(await page.locator("main tbody").innerText(), /Moved/);
+    assert.equal(
+      await page
+        .locator("main .reporting-panel")
+        .first()
+        .locator("tbody tr")
+        .count(),
+      1,
+    );
+    assert.match(
+      await page
+        .locator("main .reporting-panel")
+        .first()
+        .locator("tbody")
+        .innerText(),
+      /Moved/,
+    );
+    assert.ok(
+      (await page.locator(".cancellation-history tbody tr").count()) >= 2,
+    );
+    assert.equal(
+      await page.locator(".scheduled-cancellations tbody tr").count(),
+      1,
+    );
+    assert.match(
+      await page.locator(".scheduled-cancellations").innerText(),
+      /Fictional Future Member/,
+    );
+    await page.locator('[data-operation-period="2026-10-16"]').click();
+    assert.equal(
+      await page.locator("#operation-period").inputValue(),
+      "2026-10-16",
+    );
+    await page.locator("#operation-period").selectOption("2026-10-23");
+    await page.screenshot({
+      path: "test-results/cancellation-history-mobile.png",
+      fullPage: true,
+    });
     assert.equal(
       await page.locator("#operation-period").inputValue(),
       "2026-10-23",
@@ -411,7 +460,14 @@ const assert = require("node:assert/strict");
       /No records for this week/,
     );
     await page.locator("#operation-period").selectOption("2026-10-23");
-    assert.match(await page.locator("main tbody").innerText(), /Moved/);
+    assert.match(
+      await page
+        .locator("main .reporting-panel")
+        .first()
+        .locator("tbody")
+        .innerText(),
+      /Moved/,
+    );
     assert.equal(await page.locator('nav [data-view="due"]').count(), 0);
     await page.locator('main [data-view="home"]').click();
     await page.locator('.workspace-choices [data-view="suspensions"]').click();

@@ -73,11 +73,61 @@ export function buildOperations(
       policyApplied: policy?.version === 1,
     });
   }
+  const archive = new Map();
+  for (const report of history.filter((r) => r.week === week))
+    for (const old of report.import_summary?.operations?.cancellationHistory ||
+      [])
+      if (old.sourceAsOf <= asOf) archive.set(old.start, old);
+  const allCancellations = reports.cancellations.rows
+    .filter((r) => /^true$/i.test(r["Cancellation Present?"]))
+    .map((r) => ({
+      member_id: "clubworx:" + r["Contact ID"],
+      name: r["Full Name"],
+      membership_id: r["Membership ID"],
+      membership: r["Membership Name"] || "",
+      start: r["Membership Start Date"],
+      end: r["Membership Expiry Date"] || null,
+      recorded: r["Cancellation Date"] || null,
+      reason: r["Cancellation Reason"] || "",
+    }));
+  // Do not manufacture older zero totals before any dated cancellation record.
+  const sourceDates = allCancellations
+    .map((r) => r.end)
+    .filter((d) => d && d <= asOf)
+    .sort();
+  const earliest = sourceDates[0] || current.start;
+  const oldestStart = fridayPeriod(earliest).start;
+  for (let i = 0; i < 12; i++) {
+    const start = addDays(current.start, -i * 7),
+      end = addDays(start, 6),
+      cutoff = asOf < end ? asOf : end;
+    if (start < oldestStart && i > 1) continue;
+    const within = (d) => d && d >= start && d <= cutoff;
+    archive.set(start, {
+      start,
+      end,
+      asOf: cutoff,
+      sourceAsOf: asOf,
+      sourceCoverageStart: earliest,
+      cancellations: allCancellations.filter(
+        (r) => within(r.end) || within(r.recorded),
+      ),
+      suspensions: [],
+      policyApplied: policy?.version === 1,
+    });
+  }
   return {
     version: 2,
     week,
     asOf,
     calendar: "friday-thursday",
+    cancellationArchiveVersion: 1,
+    cancellationHistory: [...archive.values()].sort((a, b) =>
+      b.start.localeCompare(a.start),
+    ),
+    scheduledCancellations: allCancellations.filter(
+      (r) => r.end && r.end > asOf,
+    ),
     periods: [...periods.values()].sort((a, b) =>
       b.start.localeCompare(a.start),
     ),
@@ -161,6 +211,76 @@ export function operationPeriods(weeks) {
   return [...periods.values()].sort((a, b) => b.start.localeCompare(a.start));
 }
 
+export function cancellationPeriods(weeks) {
+  return operationPeriods(
+    weeks.map((report) => {
+      const source = report.import_summary?.operations;
+      if (!source?.cancellationHistory) return report;
+      return {
+        ...report,
+        import_summary: {
+          ...report.import_summary,
+          operations: { ...source, periods: source.cancellationHistory },
+        },
+      };
+    }),
+  );
+}
+
+export function upcomingCancellations(weeks) {
+  const report = [...weeks].sort(
+    (a, b) =>
+      (b.import_summary?.asOf || b.week).localeCompare(
+        a.import_summary?.asOf || a.week,
+      ) || (b.imported_at || "").localeCompare(a.imported_at || ""),
+  )[0];
+  const summary = report?.import_summary,
+    source = summary?.operations;
+  if (
+    source?.cancellationArchiveVersion !== 1 ||
+    !Array.isArray(source.scheduledCancellations) ||
+    source.asOf !== summary.asOf
+  )
+    return null;
+  const excluded = new Set(
+    summary.retentionPolicy?.excludedMembershipIds || [],
+  );
+  return {
+    asOf: source.asOf,
+    policyApplied: summary.retentionPolicy?.version === 1,
+    rows: source.scheduledCancellations
+      .filter(
+        (r) =>
+          r.end > source.asOf &&
+          !excluded.has(r.membership_id) &&
+          norm(r.reason) !== "roll over" &&
+          !/^thailand tour (deposit|final payment)$/.test(norm(r.membership)),
+      )
+      .sort(
+        (a, b) => a.end.localeCompare(b.end) || a.name.localeCompare(b.name),
+      ),
+  };
+}
+
+export function cancellationReporting(weeks, periods, selected, { esc, fmt }) {
+  const upcoming = upcomingCancellations(weeks);
+  const history = `<section class="queue-panel reporting-panel"><div class="panel-heading"><div><h2>Weekly cancellation history</h2><p>Friday–Thursday · membership end dates · choose a period to see its members.</p></div></div><div class="table-scroll"><table class="cancellation-history"><thead><tr><th>PERIOD</th><th>CANCELLATIONS</th><th>MEMBERS</th><th>STATUS</th></tr></thead><tbody>${periods.map((p) => `<tr${p.start === selected.start ? ' class="report-selected"' : ""}><th scope="row"><button class="report-week-button" data-operation-period="${p.start}">Fri ${fmt(p.start)} – Thu ${fmt(p.end)}</button></th><td>${p.policyApplied ? p.cancellations.length : "—"}</td><td>${p.policyApplied ? new Set(p.cancellations.map((r) => r.member_id)).size : "—"}</td><td>${p.sourceCoverageStart > p.start ? "Source records from " + fmt(p.sourceCoverageStart) : p.asOf === p.end ? "Complete" : "Partial through " + fmt(p.asOf)}</td></tr>`).join("")}</tbody></table></div><p class="scope-note">History is calculated from dated export records, with up to 12 periods backfilled. Dates before the earliest supplied records are not shown as zero. It reflects the latest saved source for each period; late corrections can change past totals.</p></section>`;
+  if (!upcoming?.policyApplied)
+    return (
+      history +
+      '<section class="queue-panel reporting-empty"><h2>Upcoming cancellations</h2><p>Reimport the complete exports to load scheduled future ends and the approved retention exclusions.</p></section>'
+    );
+  const groups = new Map();
+  for (const r of upcoming.rows) {
+    const key = fridayPeriod(r.end).start;
+    groups.set(key, (groups.get(key) || 0) + 1);
+  }
+  return (
+    history +
+    `<section class="queue-panel reporting-panel"><div class="panel-heading"><div><h2>Upcoming cancellations</h2><p>${upcoming.rows.length} scheduled memberships · latest export ${fmt(upcoming.asOf)}. These have not ended as of that export and may change.</p></div></div>${groups.size ? `<div class="table-scroll"><table><thead><tr><th>EFFECTIVE END WEEK · FRI–THU</th><th>SCHEDULED</th></tr></thead><tbody>${[...groups].map(([start, count]) => `<tr><td>${fmt(start)} – ${fmt(addDays(start, 6))}</td><td>${count}</td></tr>`).join("")}</tbody></table></div>` : ""}<div class="table-scroll"><table class="scheduled-cancellations"><thead><tr><th>MEMBER</th><th>MEMBERSHIP</th><th>SCHEDULED END</th><th>REASON</th></tr></thead><tbody>${upcoming.rows.map((r) => `<tr><td>${esc(r.name)}</td><td>${esc(r.membership || "Not supplied")}</td><td>${fmt(r.end)}</td><td>${esc(r.reason || "Not supplied")}</td></tr>`).join("") || '<tr><td colspan="4">No scheduled future cancellations in the latest supplied export.</td></tr>'}</tbody></table></div></section>`
+  );
+}
+
 export function workspaceView(
   data,
   week,
@@ -169,7 +289,10 @@ export function workspaceView(
 ) {
   const report = data.weeks.find((w) => w.week === week),
     summary = report?.import_summary || {},
-    periods = operationPeriods(data.weeks),
+    periods =
+      view === "cancellations"
+        ? cancellationPeriods(data.weeks)
+        : operationPeriods(data.weeks),
     defaultPeriod = fridayPeriod(week),
     ops =
       periods.find(
@@ -253,26 +376,43 @@ export function workspaceView(
       "CANCELLATION RECORDED",
       "REASON",
     ];
+    const previous = periods.find((p) => p.start === addDays(ops.start, -7));
+    const upcoming = upcomingCancellations(data.weeks);
+    const comparable =
+      ops.asOf === ops.end &&
+      !(ops.sourceCoverageStart > ops.start) &&
+      previous?.policyApplied &&
+      previous.asOf === previous.end &&
+      !(previous.sourceCoverageStart > previous.start);
+    const change = comparable
+      ? ops.cancellations.length - previous.cancellations.length
+      : null;
     metrics =
       metric(
-        "Memberships ended",
+        "Selected week",
         ops.cancellations.length,
-        "Effective end date within this week, through the cutoff",
+        `${new Set(ops.cancellations.map((r) => r.member_id)).size} members · ${ops.asOf === ops.end ? "complete period" : "partial period"}`,
       ) +
       metric(
-        "Members affected",
-        new Set(ops.cancellations.map((r) => r.member_id)).size,
-        "Unique people; multiple memberships count once here",
+        "Previous week",
+        previous?.policyApplied ? previous.cancellations.length : null,
+        previous
+          ? `${fmt(previous.start)} – ${fmt(previous.end)}`
+          : "No saved previous period",
       ) +
       metric(
-        "Cancellation notices recorded",
-        ops.recorded.length,
-        "Recorded this week; effective end may be later",
+        "Change vs previous",
+        change === null ? null : (change > 0 ? "+" : "") + change,
+        comparable
+          ? "Membership cancellations · complete periods"
+          : "Available when both periods are complete",
       ) +
       metric(
-        "Excluded records",
-        ops.excludedInWeek.length,
-        "Rollovers, configured admin cleanup and tour products",
+        "Future scheduled",
+        upcoming?.policyApplied ? upcoming.rows.length : null,
+        upcoming
+          ? `Not ended as of latest export ${fmt(upcoming.asOf)}`
+          : "Future cancellation export details unavailable",
       );
     description =
       "Weekly cancellations use the membership end date, not the date the cancellation was entered. Rollovers and configured administrative debt-cleanup records are excluded. People with another active plan may still have a membership ending here.";
@@ -313,7 +453,10 @@ export function workspaceView(
   return (
     header +
     period +
-    `<section class="metric-grid">${metrics}</section><p class="scope-note">${icon("info")} ${description}</p><section class="queue-panel reporting-panel"><div class="panel-heading"><div><h2>${view === "cancellations" ? "Memberships ending this week" : "Suspensions during this week"}</h2><p>${rows.length} records · ${rangeLabel} · through ${fmt(ops.asOf)}</p></div></div><p class="report-scroll-hint">Scroll sideways to see all details &rarr;</p><div class="table-scroll"><table><thead><tr>${columns.map((c) => `<th scope="col">${c}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${columns.length}"><div class="empty"><h3>No records for this week</h3><p>This is an imported result for the selected period, not a missing-file placeholder.</p></div></td></tr>`}</tbody></table></div></section>`
+    `<section class="metric-grid">${metrics}</section><p class="scope-note">${icon("info")} ${description}</p><section class="queue-panel reporting-panel"><div class="panel-heading"><div><h2>${view === "cancellations" ? "Memberships ending this week" : "Suspensions during this week"}</h2><p>${rows.length} records · ${rangeLabel} · through ${fmt(ops.asOf)}</p></div></div><p class="report-scroll-hint">Scroll sideways to see all details &rarr;</p><div class="table-scroll"><table><thead><tr>${columns.map((c) => `<th scope="col">${c}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${columns.length}"><div class="empty"><h3>No records for this week</h3><p>This is an imported result for the selected period, not a missing-file placeholder.</p></div></td></tr>`}</tbody></table></div></section>` +
+    (view === "cancellations"
+      ? cancellationReporting(data.weeks, periods, ops, { esc, fmt })
+      : "")
   );
 }
 

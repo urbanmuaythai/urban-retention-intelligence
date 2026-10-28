@@ -6,6 +6,8 @@ import {
   fridayPeriod,
   operationPeriods,
   workspaceView,
+  cancellationPeriods,
+  upcomingCancellations,
 } from "../src/operations.js";
 import { fixture, filesFor } from "./csv-fixtures.mjs";
 import { readReports, convertReports } from "../src/csv-import.js";
@@ -246,4 +248,81 @@ test("a Friday export defaults to the completed Thursday period for the selected
   assert.match(html, /<option value="2026-10-23" selected>/);
   assert.match(html, /Fri 2026-10-23 – Thu 2026-10-29/);
   assert.match(html, /Complete period/);
+});
+
+test("cancellation archive uses dated Friday weeks and separates scheduled ends from completed totals", () => {
+  const f = fixture(),
+    r = f.cancellations[0];
+  f.cancellations = [
+    ["previous", "2026-10-22", "Moved"],
+    ["current", "2026-10-23", "Moved"],
+    ["scheduled", "2026-10-29", "Moved"],
+    ["roll", "2026-11-04", "Roll Over"],
+    ["admin", "2026-11-05", "Bad debt"],
+  ].map(([id, end, reason]) => ({
+    ...r,
+    "Membership ID": id,
+    "Membership Expiry Date": end,
+    "Cancellation Reason": reason,
+  }));
+  const reports = readReports(filesFor(f));
+  const record = {
+    week,
+    import_summary: {
+      asOf,
+      retentionPolicy: policy,
+      operations: buildOperations(reports, week, asOf, policy),
+    },
+  };
+  const periods = cancellationPeriods([record]);
+  assert.equal(periods.length, 2);
+  assert.deepEqual(
+    periods
+      .find((p) => p.start === "2026-10-23")
+      .cancellations.map((r) => r.membership_id),
+    ["current"],
+  );
+  assert.deepEqual(
+    periods
+      .find((p) => p.start === "2026-10-16")
+      .cancellations.map((r) => r.membership_id),
+    ["previous"],
+  );
+  assert.deepEqual(
+    upcomingCancellations([record]).rows.map((r) => r.membership_id),
+    ["scheduled"],
+  );
+  const html = workspaceView(
+    { weeks: [record], risks: [], events: [] },
+    week,
+    "cancellations",
+    { esc: String, fmt: String, icon: () => "" },
+  );
+  assert.match(html, /Available when both periods are complete/);
+  assert.match(html, /cancellation-history/);
+  assert.match(html, /Upcoming cancellations/);
+  const next = {
+    week: "2026-11-02",
+    import_summary: {
+      asOf: "2026-11-02",
+      retentionPolicy: policy,
+      operations: buildOperations(reports, "2026-11-02", "2026-11-02", policy),
+    },
+  };
+  assert.equal(
+    cancellationPeriods([record, next]).filter((p) => p.start === "2026-10-23")
+      .length,
+    1,
+  );
+  assert.equal(
+    upcomingCancellations([record, next]).rows.length,
+    0,
+    "Old scheduled ends disappear when ended in latest export",
+  );
+  delete next.import_summary.operations.cancellationArchiveVersion;
+  assert.equal(
+    upcomingCancellations([record, next]),
+    null,
+    "Missing latest future details must not fall back to stale ones",
+  );
 });

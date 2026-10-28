@@ -1,6 +1,6 @@
 # Drive to Urban Member Care
 
-This is a Codex desktop heartbeat, not a cloud worker. The saved schedule verified on 28 October 2026 checks the existing Clubworx export folder daily at 09:00 Australia/Brisbane and imports a complete new batch. Previous 30-minute cadence descriptions were incorrect. The computer and Codex must be available; connector access must remain active. It does not click Export inside Clubworx or change any existing Clubworx/email/Drive automation. Cloud-independent scheduling remains a separate integration.
+This is a Codex desktop heartbeat, not a cloud worker. The saved schedule verified on 28 October 2026 checks the existing Clubworx export folder Monday and Friday at 09:00 Australia/Brisbane and imports a complete new batch. Previous 30-minute cadence descriptions were incorrect. The computer and Codex must be available; connector access must remain active. It does not click Export inside Clubworx or change any existing Clubworx/email/Drive automation. The cloud replacement is prepared at `scripts/CLOUD_MEMBER_CARE.md`; Google authorisation/trigger installation is still pending. Keep this fallback until cloud execution is confirmed.
 
 Verified folder: https://drive.google.com/drive/folders/1e4X24ykUscsd67u4Uzp_qXx7dD8e3Li_
 

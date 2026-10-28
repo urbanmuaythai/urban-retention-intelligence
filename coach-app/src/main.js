@@ -380,6 +380,7 @@ function bind() {
       search = "";
       render();
     };
+  document.querySelectorAll("[data-operation-period]").forEach(button=>button.onclick=()=>{operationPeriod=button.dataset.operationPeriod;render();});
   if ($("#operation-period"))
     $("#operation-period").onchange = (e) => {
       operationPeriod = e.target.value;
