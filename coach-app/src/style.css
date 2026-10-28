@@ -2784,3 +2784,177 @@ tbody tr:hover {
     transition: none;
   }
 }
+/* Phone layout: nothing scrolls sideways. Tables become stacked cards and the
+   section menu wraps instead of scrolling. */
+@media (max-width: 760px) {
+  .sidebar nav {
+    flex-wrap: wrap;
+    overflow: visible;
+    margin: 15px 0 0;
+  }
+  .nav-item {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .queue-panel table {
+    min-width: 0;
+  }
+  .queue-panel thead {
+    display: none;
+  }
+  .queue-panel table,
+  .queue-panel tbody,
+  .queue-panel tr,
+  .queue-panel td {
+    display: block;
+    width: 100%;
+  }
+  .queue-panel tbody tr {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .queue-panel tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .queue-panel td,
+  .queue-panel td:first-child,
+  .table-scroll td:first-child {
+    min-width: 0;
+    padding: 5px 0;
+    border-bottom: 0;
+    overflow-wrap: anywhere;
+  }
+  .queue-panel td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 8px;
+    font-weight: 650;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  /* Member name and open-member button carry their own meaning. */
+  .queue-panel td:first-child::before,
+  .queue-panel td:last-child:empty::before {
+    display: none;
+  }
+  .member-button small {
+    max-width: none;
+  }
+  /* The reach-out list's open-member arrow sits in the card's corner. */
+  .queue-panel tbody tr:has(.member-button) {
+    position: relative;
+  }
+  .queue-panel tbody tr:has(.member-button) td:last-child {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    width: auto;
+    padding: 0;
+  }
+  .queue-panel tbody tr:has(.member-button) td:last-child::before {
+    display: none;
+  }
+  .queue-panel tbody tr:has(.member-button) td:first-child {
+    padding-right: 44px;
+  }
+  .heading-actions {
+    flex-wrap: wrap;
+  }
+  .heading-actions > * {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+/* Phone portal: a compact heading and three short rows, each with its icon in a
+   circle, so every section is visible without scrolling. */
+@media (max-width: 600px) {
+  .portal-main {
+    padding: 22px 0 28px;
+  }
+  .portal-main .page-heading {
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+  .portal-main h1 {
+    font-size: 30px;
+  }
+  .portal-main .page-heading p {
+    font-size: 12px;
+  }
+  .portal-main .report-period {
+    font-size: 11px;
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+  .portal-main .workspace-choices {
+    gap: 10px;
+  }
+  .portal-main .workspace-choice {
+    min-height: 0;
+    padding: 14px 16px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "icon heading count"
+      "icon detail count";
+    column-gap: 14px;
+    row-gap: 3px;
+    align-items: center;
+    border-top-width: 1px;
+    border-left: 3px solid var(--gold);
+  }
+  .portal-main .workspace-choice:first-child {
+    border-top-color: #a5b4d34a;
+    border-left-color: var(--red);
+  }
+  .portal-main .choice-icon {
+    grid-area: icon;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(245, 185, 33, 0.14);
+    border: 1px solid rgba(245, 185, 33, 0.4);
+  }
+  .portal-main .workspace-choice:first-child .choice-icon {
+    color: #ff5a6e;
+    background: rgba(200, 16, 46, 0.2);
+    border-color: rgba(200, 16, 46, 0.55);
+  }
+  .portal-main .choice-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  .portal-main .choice-heading {
+    grid-area: heading;
+    font-size: 16px;
+  }
+  .portal-main .choice-detail {
+    grid-area: detail;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .portal-main .choice-count {
+    grid-area: count;
+    font-size: 24px;
+    min-width: 2ch;
+    text-align: right;
+  }
+  .portal-main .choice-link {
+    display: none;
+  }
+}
+@media (max-width: 400px) {
+  .portal-main .choice-detail {
+    display: none;
+  }
+  .portal-main .workspace-choice {
+    grid-template-areas: "icon heading count";
+    padding: 12px 14px;
+  }
+  .portal-main .report-period {
+    font-size: 10px;
+  }
+}

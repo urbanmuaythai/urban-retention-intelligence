@@ -132,6 +132,17 @@ function toast(message, error = false) {
 }
 function decorate() {
   createIcons({ icons, attrs: { "stroke-width": 1.7 } });
+  // Phone layout stacks table rows as cards; each cell keeps its column name.
+  for (const table of document.querySelectorAll(".queue-panel table")) {
+    const labels = [...table.querySelectorAll("thead th")].map((th) =>
+      th.textContent.trim(),
+    );
+    for (const row of table.querySelectorAll("tbody tr"))
+      [...row.children].forEach((cell, i) => {
+        if (labels[i] && !cell.hasAttribute("colspan"))
+          cell.dataset.label = labels[i];
+      });
+  }
 }
 function rows() {
   return projectRows(store.data.risks, store.data.events, week);
