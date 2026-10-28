@@ -54,3 +54,6 @@ Five-file database fix (28 October 2026): the database import now accepts the op
 
 
 Installable app (28 October 2026): web app manifest, Urban logo icons (192, 512, maskable 512, Apple 180, favicon) and iPhone home-screen tags. Opens full-screen when added to a phone home screen. Source commit `347066a`.
+
+
+Phone layout (28 October 2026): no sideways scrolling from 320px; list tables become labelled cards below 760px; section menu and heading actions wrap; compact phone portal with circular icons so all three sections show on one screen. Source commit `409695e`.
