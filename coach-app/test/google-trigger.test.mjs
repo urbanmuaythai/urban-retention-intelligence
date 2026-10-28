@@ -76,11 +76,7 @@ test("Google trigger installs only after a successful sync, replaces its own tri
         const builder = {};
         for (const method of [
           "timeBased",
-          "onWeekDay",
-          "everyWeeks",
-          "atHour",
-          "nearMinute",
-          "inTimezone",
+          "everyMinutes",
         ])
           builder[method] = (value) => {
             record[method] = value;
@@ -98,24 +94,21 @@ test("Google trigger installs only after a successful sync, replaces its own tri
   vm.runInContext(source, context);
   context.installMemberCareTriggers();
   assert.equal(posts, 1);
-  assert.equal(triggers.length, 3);
+  assert.equal(triggers.length, 2);
   assert.ok(triggers.some((t) => t.id === "other"));
   assert.ok(!triggers.some((t) => t.id === "old"));
   const scheduled = triggers.filter((t) => t.handler === "syncMemberCare");
   assert.deepEqual(
-    scheduled.map((t) => t.onWeekDay),
-    ["MO", "FR"],
+    scheduled.map((t) => t.everyMinutes),
+    [30],
   );
-  for (const t of scheduled) {
-    assert.equal(t.atHour, 9);
-    assert.equal(t.inTimezone, "Australia/Brisbane");
-  }
   context.installMemberCareTriggers();
-  assert.equal(triggers.length, 3, "Reinstall must not duplicate schedules");
+  assert.equal(posts, 1, "An already-sent batch is not uploaded again");
+  assert.equal(triggers.length, 2, "Reinstall must not duplicate schedules");
   files = files.slice(0, 3);
   assert.throws(
     () => context.installMemberCareTriggers(),
     /no triggers were installed/,
   );
-  assert.equal(triggers.length, 3);
+  assert.equal(triggers.length, 2);
 });

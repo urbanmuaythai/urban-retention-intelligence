@@ -71,6 +71,13 @@ function syncMemberCare() {
         1800000
     )
       batch.push(history);
+    // Checks run every 30 minutes; a batch already sent stops before uploading.
+    const batchKey = batch.map((x) => x.name).join("|");
+    if (properties.getProperty("MEMBER_CARE_LAST_BATCH") === batchKey)
+      return saveMemberCareReceipt_({
+        status: "unchanged",
+        reason: "This batch was already sent.",
+      });
     const files = batch.map((x) => ({
       id: x.file.getId(),
       name: x.name,
@@ -99,6 +106,8 @@ function syncMemberCare() {
         receipt.error ||
           "Member Care import was not confirmed. Check the report before retrying.",
       );
+    if (["unchanged", "imported"].includes(receipt.status))
+      properties.setProperty("MEMBER_CARE_LAST_BATCH", batchKey);
     return saveMemberCareReceipt_(receipt);
   } finally {
     lock.releaseLock();
@@ -135,17 +144,11 @@ function installMemberCareTriggers() {
     );
   const created = [];
   try {
-    [ScriptApp.WeekDay.MONDAY, ScriptApp.WeekDay.FRIDAY].forEach((day) =>
-      created.push(
-        ScriptApp.newTrigger("syncMemberCare")
-          .timeBased()
-          .onWeekDay(day)
-          .everyWeeks(1)
-          .atHour(9)
-          .nearMinute(0)
-          .inTimezone("Australia/Brisbane")
-          .create(),
-      ),
+    created.push(
+      ScriptApp.newTrigger("syncMemberCare")
+        .timeBased()
+        .everyMinutes(30)
+        .create(),
     );
   } catch (error) {
     created.forEach((trigger) => ScriptApp.deleteTrigger(trigger));
@@ -160,6 +163,6 @@ function installMemberCareTriggers() {
     )
     .forEach((trigger) => ScriptApp.deleteTrigger(trigger));
   console.log(
-    "Installed: Monday and Friday around 9 am Australia/Brisbane. Confirm these in Triggers before disabling the desktop fallback.",
+    "Installed: checks every 30 minutes.",
   );
 }
