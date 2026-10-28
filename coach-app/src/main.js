@@ -110,6 +110,7 @@ const stamp = (iso) =>
 let store,
   week,
   view = "home",
+  operationPeriod = null,
   priority = "All",
   stage = "All",
   search = "",
@@ -221,6 +222,7 @@ function render() {
       photo: urbanGymPhoto,
       user: store.user,
       demo: store.demo,
+      operationPeriod,
     });
     bind();
     decorate();
@@ -310,6 +312,7 @@ function render() {
  </main></div></div><dialog id="member-dialog" class="member-dialog" aria-labelledby="member-title"></dialog><dialog id="import-dialog" class="import-dialog" aria-labelledby="import-title"></dialog>`;
   if (["cancellations", "suspensions"].includes(view))
     $("#app main").innerHTML = workspaceView(store.data, week, view, {
+      operationPeriod,
       esc,
       fmt,
       icon,
@@ -377,10 +380,17 @@ function bind() {
       search = "";
       render();
     };
-  $("#week").onchange = (e) => {
-    week = e.target.value;
-    render();
-  };
+  if ($("#operation-period"))
+    $("#operation-period").onchange = (e) => {
+      operationPeriod = e.target.value;
+      render();
+    };
+  if ($("#week"))
+    $("#week").onchange = (e) => {
+      operationPeriod = null;
+      week = e.target.value;
+      render();
+    };
   $("#refresh").onclick = () => refresh();
   if ($("#reset-demo"))
     $("#reset-demo").onclick = () => {
@@ -570,6 +580,7 @@ async function start(demo) {
       ? "2026-10-26"
       : workspace.data.weeks.at(-1)?.week || brisbaneToday();
     view = "home";
+    operationPeriod = null;
     search = "";
     priority = "All";
     stage = "All";

@@ -534,7 +534,7 @@ export function convertReports(
       .retentionPolicy || null;
   const summary = {
     retentionPolicy,
-    operations: buildOperations(reports, week, asOf, retentionPolicy),
+    operations: buildOperations(reports, week, asOf, retentionPolicy, history),
     targets,
 
     asOf,

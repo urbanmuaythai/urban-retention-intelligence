@@ -1,71 +1,113 @@
 import { addDays, norm, projectRows } from "./domain.js";
 
-export function buildOperations(reports, week, asOf, policy = null) {
-  const inWindow = (date) => date && date >= week && date <= asOf;
-  const cancellations = reports.cancellations.rows
-    .filter(
+export function fridayPeriod(asOf) {
+  const day = new Date(asOf + "T12:00:00Z").getUTCDay();
+  const start = addDays(asOf, -((day + 2) % 7));
+  return { start, end: addDays(start, 6) };
+}
+
+export function buildOperations(
+  reports,
+  week,
+  asOf,
+  policy = null,
+  history = [],
+) {
+  const current = fridayPeriod(asOf);
+  const periods = new Map();
+  // One Monday record can contain both sides of a Friday rollover. Preserve both.
+  for (const report of history.filter((w) => w.week === week))
+    if (report.import_summary?.operations?.version === 2)
+      for (const period of report.import_summary.operations.periods)
+        if (period.sourceAsOf <= asOf) periods.set(period.start, period);
+  for (const start of [addDays(current.start, -7), current.start]) {
+    const end = addDays(start, 6),
+      cutoff = asOf < end ? asOf : end;
+    const inWindow = (date) => date && date >= start && date <= cutoff;
+    const cancellations = reports.cancellations.rows
+      .filter(
+        (r) =>
+          /^true$/i.test(r["Cancellation Present?"]) &&
+          (inWindow(r["Membership Expiry Date"]) ||
+            inWindow(r["Cancellation Date"])),
+      )
+      .map((r) => ({
+        member_id: "clubworx:" + r["Contact ID"],
+        name: r["Full Name"],
+        membership_id: r["Membership ID"],
+        membership: r["Membership Name"] || "",
+        start: r["Membership Start Date"],
+        end: r["Membership Expiry Date"] || null,
+        recorded: r["Cancellation Date"] || null,
+        reason: r["Cancellation Reason"] || "",
+      }));
+    const suspensionRows = reports.suspensions.rows.filter(
       (r) =>
-        /^true$/i.test(r["Cancellation Present?"]) &&
-        (inWindow(r["Membership Expiry Date"]) ||
-          inWindow(r["Cancellation Date"])),
-    )
-    .map((r) => ({
+        r["Suspension Starts"] <= cutoff &&
+        (!r["Suspension Ends"] || r["Suspension Ends"] >= start),
+    );
+    const suspensions = [
+      ...new Map(
+        suspensionRows.map((r) => [
+          JSON.stringify([
+            r["Contact ID"],
+            r["Suspension Starts"],
+            r["Suspension Ends"],
+          ]),
+          r,
+        ]),
+      ).values(),
+    ].map((r) => ({
       member_id: "clubworx:" + r["Contact ID"],
       name: r["Full Name"],
-      membership_id: r["Membership ID"],
-      membership: r["Membership Name"] || "",
-      start: r["Membership Start Date"],
-      end: r["Membership Expiry Date"] || null,
-      recorded: r["Cancellation Date"] || null,
-      reason: r["Cancellation Reason"] || "",
+      start: r["Suspension Starts"],
+      end: r["Suspension Ends"] || null,
     }));
-  const suspensionRows = reports.suspensions.rows.filter(
-    (r) =>
-      r["Suspension Starts"] <= asOf &&
-      (!r["Suspension Ends"] || r["Suspension Ends"] >= week),
-  );
-  const suspensions = [
-    ...new Map(
-      suspensionRows.map((r) => [
-        JSON.stringify([
-          r["Contact ID"],
-          r["Suspension Starts"],
-          r["Suspension Ends"],
-        ]),
-        r,
-      ]),
-    ).values(),
-  ].map((r) => ({
-    member_id: "clubworx:" + r["Contact ID"],
-    name: r["Full Name"],
-    start: r["Suspension Starts"],
-    end: r["Suspension Ends"] || null,
-  }));
+    periods.set(start, {
+      start,
+      end,
+      asOf: cutoff,
+      sourceAsOf: asOf,
+      cancellations,
+      suspensions,
+      policyApplied: policy?.version === 1,
+    });
+  }
   return {
-    version: 1,
+    version: 2,
     week,
     asOf,
-    cancellations,
-    suspensions,
-    policyApplied: policy?.version === 1,
+    calendar: "friday-thursday",
+    periods: [...periods.values()].sort((a, b) =>
+      b.start.localeCompare(a.start),
+    ),
   };
 }
 
-export function operationWeek(report) {
+export function operationWeek(report, periodStart = null) {
   const summary = report?.import_summary,
     data = summary?.operations;
   if (
     !data ||
-    data.version !== 1 ||
+    data.version !== 2 ||
+    data.calendar !== "friday-thursday" ||
     data.week !== report.week ||
     data.asOf !== summary.asOf
   )
     return null;
-  const end =
-    summary.asOf < addDays(report.week, 6)
-      ? summary.asOf
-      : addDays(report.week, 6);
-  const inWeek = (date) => date && date >= report.week && date <= end;
+  const key = periodStart || fridayPeriod(data.asOf).start;
+  const period = data.periods.find((p) => p.start === key);
+  if (
+    !period ||
+    fridayPeriod(period.start).start !== period.start ||
+    period.end !== addDays(period.start, 6) ||
+    period.asOf < period.start ||
+    period.asOf > period.end ||
+    period.asOf > period.sourceAsOf ||
+    period.sourceAsOf > data.asOf
+  )
+    return null;
+  const inWeek = (date) => date && date >= period.start && date <= period.asOf;
   const excluded = new Set(
     summary.retentionPolicy?.excludedMembershipIds || [],
   );
@@ -73,45 +115,82 @@ export function operationWeek(report) {
     norm(r.reason) !== "roll over" &&
     !excluded.has(r.membership_id) &&
     !/^thailand tour (deposit|final payment)$/.test(norm(r.membership));
-  const cancellations = data.cancellations.filter(
-    (r) => included(r) && inWeek(r.end),
-  );
-  const recorded = data.cancellations.filter(
-    (r) => included(r) && inWeek(r.recorded),
-  );
-  const excludedInWeek = data.cancellations.filter(
-    (r) => !included(r) && inWeek(r.end),
-  );
-  const suspensions = data.suspensions.filter(
-    (r) => r.start <= end && (!r.end || r.end >= report.week),
+  const suspensions = period.suspensions.filter(
+    (r) => r.start <= period.asOf && (!r.end || r.end >= period.start),
   );
   return {
-    cancellations,
-    recorded,
-    excludedInWeek,
+    ...period,
+    cancellations: period.cancellations.filter(
+      (r) => included(r) && inWeek(r.end),
+    ),
+    recorded: period.cancellations.filter(
+      (r) => included(r) && inWeek(r.recorded),
+    ),
+    excludedInWeek: period.cancellations.filter(
+      (r) => !included(r) && inWeek(r.end),
+    ),
     suspensions,
     currentSuspensions: suspensions.filter(
-      (r) => r.start <= end && (!r.end || r.end >= end),
+      (r) => !r.end || r.end >= period.asOf,
     ),
-    asOf: end,
-    policyApplied: data.policyApplied && summary.retentionPolicy?.version === 1,
+    policyApplied:
+      period.policyApplied && summary.retentionPolicy?.version === 1,
   };
 }
 
-export function workspaceView(data, week, view, { esc, fmt, icon }) {
+export function operationPeriods(weeks) {
+  const periods = new Map();
+  for (const report of weeks)
+    for (const candidate of report.import_summary?.operations?.version === 2
+      ? report.import_summary.operations.periods
+      : []) {
+      const period = operationWeek(report, candidate.start);
+      if (!period) continue;
+      const old = periods.get(period.start);
+      if (
+        !old ||
+        period.sourceAsOf > old.sourceAsOf ||
+        (period.sourceAsOf === old.sourceAsOf &&
+          (report.imported_at || "") > old.savedAt)
+      )
+        periods.set(period.start, {
+          ...period,
+          savedAt: report.imported_at || "",
+        });
+    }
+  return [...periods.values()].sort((a, b) => b.start.localeCompare(a.start));
+}
+
+export function workspaceView(
+  data,
+  week,
+  view,
+  { esc, fmt, icon, operationPeriod },
+) {
   const report = data.weeks.find((w) => w.week === week),
     summary = report?.import_summary || {},
-    ops = operationWeek(report);
+    periods = operationPeriods(data.weeks),
+    defaultPeriod = fridayPeriod(week),
+    ops =
+      periods.find(
+        (p) => p.start === (operationPeriod || defaultPeriod.start),
+      ) || null;
   const weeks = [...data.weeks].sort((a, b) => b.week.localeCompare(a.week));
   const names = {
     home: "Member care portal",
     cancellations: "Cancellations",
     suspensions: "Suspensions",
   };
-  const header = `<div class="page-heading"><div><div class="eyebrow">URBAN MUAYTHAI · MEMBER CARE</div><h1>${names[view]}<span class="heading-dot">.</span></h1><p>${view === "home" ? "Choose where you would like to start." : "Results belong to the selected report week and its saved export cutoff."}</p></div><div class="heading-actions"><label class="week-control">${icon("calendar-days")}<span><small>REPORT WEEK</small><select id="week" aria-label="Report week">${weeks.map((w) => `<option value="${esc(w.week)}" ${w.week === week ? "selected" : ""}>${fmt(w.week)}</option>`).join("")}</select></span></label>${view === "home" ? "" : '<button class="button secondary" data-view="home">Back to portal</button>'}</div></div>`;
-  const period = report
-    ? `<p class="report-period">Week beginning <strong>${fmt(week)}</strong> · data as of <strong>${fmt(summary.asOf || week)}</strong>${summary.asOf < addDays(week, 6) ? " · partial week" : ""}</p>`
-    : '<p class="report-period">No report imported yet.</p>';
+  const operational = view !== "home";
+  const picker = operational
+    ? `<label class="week-control">${icon("calendar-days")}<span><small>FRI–THU PERIOD</small><select id="operation-period" aria-label="Friday to Thursday period">${periods.length ? periods.map((p) => `<option value="${esc(p.start)}" ${p.start === (ops?.start || defaultPeriod.start) ? "selected" : ""}>${fmt(p.start)} – ${fmt(p.end)}</option>`).join("") : `<option value="${defaultPeriod.start}">${fmt(defaultPeriod.start)} – ${fmt(defaultPeriod.end)}</option>`}</select></span></label>`
+    : `<label class="week-control">${icon("calendar-days")}<span><small>AT RISK REPORT WEEK</small><select id="week" aria-label="Report week">${weeks.map((w) => `<option value="${esc(w.week)}" ${w.week === week ? "selected" : ""}>${fmt(w.week)}</option>`).join("")}</select></span></label>`;
+  const header = `<div class="page-heading"><div><div class="eyebrow">URBAN MUAYTHAI · MEMBER CARE</div><h1>${names[view]}<span class="heading-dot">.</span></h1><p>${operational ? "Friday through Thursday · Australia/Brisbane" : "Choose where you would like to start."}</p></div><div class="heading-actions">${picker}${operational ? '<button class="button secondary" data-view="home">Back to portal</button>' : ""}</div></div>`;
+  const range = ops || defaultPeriod;
+  const rangeLabel = `Fri ${fmt(range.start)} – Thu ${fmt(range.end)}`;
+  const period = operational
+    ? `<p class="report-period"><strong>${rangeLabel}</strong>${ops ? ` · records through ${fmt(ops.asOf)} · source export ${fmt(ops.sourceAsOf)} · ${ops.asOf === ops.end ? "Complete period" : "Partial period"}` : " · details need reimporting"}</p>`
+    : `<p class="report-period">At Risk Members: week beginning <strong>${fmt(week)}</strong>${report ? ` · data as of ${fmt(summary.asOf || week)}` : " · no import yet"}<br>Cancellations &amp; Suspensions: <strong>${rangeLabel}</strong>${ops && ops.asOf !== ops.end ? " · partial period" : ""}</p>`;
   const metric = (title, value, detail) =>
     `<article class="metric"><div class="metric-top"><span>${title}</span></div><strong>${value ?? "—"}</strong><small>${detail}</small></article>`;
   const unavailable =
@@ -133,14 +212,14 @@ export function workspaceView(data, week, view, { esc, fmt, icon }) {
         [
           "cancellations",
           "Cancellations",
-          "Memberships ending in the selected report week.",
+          `Memberships ending ${rangeLabel}.`,
           ops?.policyApplied ? ops.cancellations.length : null,
           "flag",
         ],
         [
           "suspensions",
           "Suspensions",
-          "Members on a suspension during the selected report week.",
+          `Suspensions overlapping ${rangeLabel}.`,
           ops ? new Set(ops.suspensions.map((r) => r.member_id)).size : null,
           "calendar-clock",
         ],
@@ -209,7 +288,7 @@ export function workspaceView(data, week, view, { esc, fmt, icon }) {
       metric(
         "Members suspended this week",
         new Set(ops.suspensions.map((r) => r.member_id)).size,
-        "Any suspension overlapping Monday through the cutoff",
+        "Any suspension overlapping Friday through the cutoff",
       ) +
       metric(
         "Current at cutoff",
@@ -222,11 +301,11 @@ export function workspaceView(data, week, view, { esc, fmt, icon }) {
         "Multiple periods for one member can appear",
       ) +
       metric(
-        "Held from risk outreach",
-        summary.currentSuspensions === undefined
-          ? null
-          : summary.currentSuspensions + (summary.suspensionStatusHeld || 0),
-        "Eligible training members held by dates or status",
+        "Periods started this week",
+        ops.suspensions.filter(
+          (r) => r.start >= ops.start && r.start <= ops.asOf,
+        ).length,
+        "Suspension start dates within this Friday–Thursday period",
       );
     description =
       "This list shows source suspension periods overlapping the selected week through its cutoff. The risk queue holds only eligible training members, so its held count can differ from the full suspension list.";
@@ -234,7 +313,7 @@ export function workspaceView(data, week, view, { esc, fmt, icon }) {
   return (
     header +
     period +
-    `<section class="metric-grid">${metrics}</section><p class="scope-note">${icon("info")} ${description}</p><section class="queue-panel reporting-panel"><div class="panel-heading"><div><h2>${view === "cancellations" ? "Memberships ending this week" : "Suspensions during this week"}</h2><p>${rows.length} records · week beginning ${fmt(week)} through ${fmt(ops.asOf)}</p></div></div><p class="report-scroll-hint">Scroll sideways to see all details &rarr;</p><div class="table-scroll"><table><thead><tr>${columns.map((c) => `<th scope="col">${c}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${columns.length}"><div class="empty"><h3>No records for this week</h3><p>This is an imported result for the selected period, not a missing-file placeholder.</p></div></td></tr>`}</tbody></table></div></section>`
+    `<section class="metric-grid">${metrics}</section><p class="scope-note">${icon("info")} ${description}</p><section class="queue-panel reporting-panel"><div class="panel-heading"><div><h2>${view === "cancellations" ? "Memberships ending this week" : "Suspensions during this week"}</h2><p>${rows.length} records · ${rangeLabel} · through ${fmt(ops.asOf)}</p></div></div><p class="report-scroll-hint">Scroll sideways to see all details &rarr;</p><div class="table-scroll"><table><thead><tr>${columns.map((c) => `<th scope="col">${c}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${columns.length}"><div class="empty"><h3>No records for this week</h3><p>This is an imported result for the selected period, not a missing-file placeholder.</p></div></td></tr>`}</tbody></table></div></section>`
   );
 }
 

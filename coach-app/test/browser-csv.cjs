@@ -382,14 +382,35 @@ const assert = require("node:assert/strict");
       version: 1,
       excludedMembershipIds: [],
     };
-    imported.import_summary.operations.policyApplied = true;
+    for (const period of imported.import_summary.operations.periods)
+      period.policyApplied = true;
     const operationRead = page.waitForResponse((r) =>
       r.url().includes("/rest/v1/weekly_reports"),
     );
     await page.locator("#refresh").click();
     await operationRead;
-    await page.getByRole("heading", {name:"Memberships ending this week",exact:true}).waitFor();
+    await page
+      .getByRole("heading", {
+        name: "Memberships ending this week",
+        exact: true,
+      })
+      .waitFor();
     assert.equal(await page.locator("main tbody tr").count(), 1);
+    assert.match(await page.locator("main tbody").innerText(), /Moved/);
+    assert.equal(
+      await page.locator("#operation-period").inputValue(),
+      "2026-10-23",
+    );
+    assert.match(
+      await page.locator(".report-period").innerText(),
+      /Fri 23 Oct 2026.*Thu 29 Oct 2026/,
+    );
+    await page.locator("#operation-period").selectOption("2026-10-16");
+    assert.match(
+      await page.locator("main").innerText(),
+      /No records for this week/,
+    );
+    await page.locator("#operation-period").selectOption("2026-10-23");
     assert.match(await page.locator("main tbody").innerText(), /Moved/);
     assert.equal(await page.locator('nav [data-view="due"]').count(), 0);
     await page.locator('main [data-view="home"]').click();

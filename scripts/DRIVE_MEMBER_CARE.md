@@ -1,6 +1,6 @@
 # Drive to Urban Member Care
 
-This is a Codex desktop heartbeat, not a cloud worker. Every 30 minutes it can check the already-existing Clubworx export folder and import a complete new batch. The computer and Codex must be available; connector access must remain active. It does not click Export inside Clubworx or change any existing Clubworx/email/Drive automation. Cloud-independent scheduling remains a separate integration.
+This is a Codex desktop heartbeat, not a cloud worker. The saved schedule verified on 28 October 2026 checks the existing Clubworx export folder daily at 09:00 Australia/Brisbane and imports a complete new batch. Previous 30-minute cadence descriptions were incorrect. The computer and Codex must be available; connector access must remain active. It does not click Export inside Clubworx or change any existing Clubworx/email/Drive automation. Cloud-independent scheduling remains a separate integration.
 
 Verified folder: https://drive.google.com/drive/folders/1e4X24ykUscsd67u4Uzp_qXx7dD8e3Li_
 
@@ -26,3 +26,6 @@ No member CSVs, private context, generated payloads or SQL belong in Git or the 
 
 
 The same converter now carries approved private retentionPolicy forward and saves minimal weekly cancellation/suspension operations details. Keep that policy and week-scoped data in the private report payload. The metadata-only first check must not load operations/member lists on unchanged runs.
+
+
+Cancellations/Suspensions calendar: version 2 operations uses Friday–Thursday periods, not the Monday risk-report key. The converter captures the current source period plus the prior complete period and preserves same-Monday period history across Friday rollovers. The app has a separate Fri–Thu selector, and old version 1 data must be rebuilt, not relabelled. A Thursday-night export is recommended for complete weekly figures; Friday's 09:00 pickup processes it when the desktop is available. Do not interpret the 30-minute source batch span as the check frequency. Clubworx recurring delivery is separate and has not been configured by this sync.
