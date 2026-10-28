@@ -271,7 +271,7 @@ function render() {
      "",
    )}</select></span></label>${store.user.role === "admin" ? `<button class="button secondary" id="import-open">${icon("upload")} Import week</button>` : ""}</div></div>
  ${store.data.weeks.find((w) => w.week === week)?.import_summary?.historicalSync?.archivedMembers ? `<p class="history-notice">${icon("calendar-clock")}<span><strong>Historical weekly summaries linked.</strong> ${store.data.weeks.find((w) => w.week === week).import_summary.historicalSync.archivedMembers} eligible members have archived attendance context. Original snapshot dates are shown on the history bars. Archived Monday cutoffs may differ from this export by one day; these are weekly observations, not individual attendance dates.</span></p>` : ""}
- ${report?.import_summary?.driveSync ? `<p class="history-notice drive-source">${icon("refresh-cw")}<span><strong>Imported from Clubworx Exports.</strong> Four matching CSV reports · saved ${esc(stamp(report.imported_at))}. Automated folder checks run through Codex on the connected computer.</span></p>` : ""}
+ ${report?.import_summary?.driveSync ? `<p class="history-notice drive-source">${icon("refresh-cw")}<span><strong>Imported from Clubworx Exports.</strong> ${report.import_summary.driveSync.files?.length === 5 ? "Five matching CSV reports, including attendance history" : "Four matching CSV reports"} · saved ${esc(stamp(report.imported_at))}. Google checks the Clubworx Exports folder every 30 minutes.</span></p>` : ""}
  <section class="metric-grid" aria-label="Outreach summary">
  ${[
    [active.length, "To reach out", "Members in the action queue", "inbox", ""],
