@@ -51,3 +51,6 @@ Red rules and attendance history (28 October 2026): Red also flags "Was on targe
 
 
 Five-file database fix (28 October 2026): the database import now accepts the optional UMC 05 file (migration `20261028080000_drive_batch_attendance_history.sql`, applied live). Import banner names five-file batches and the 30-minute Google check. Source commit `de6ceba`.
+
+
+Installable app (28 October 2026): web app manifest, Urban logo icons (192, 512, maskable 512, Apple 180, favicon) and iPhone home-screen tags. Opens full-screen when added to a phone home screen. Source commit `347066a`.
