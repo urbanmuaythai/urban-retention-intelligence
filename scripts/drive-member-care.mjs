@@ -5,6 +5,7 @@ import { prepareDriveImport as prepare } from "../coach-app/src/drive-import.js"
 export {
   DRIVE_FOLDER,
   REPORT_IDS,
+  HISTORY_REPORT_ID,
   CONTEXT_SQL,
   selectDriveBatch,
 } from "../coach-app/src/drive-import.js";

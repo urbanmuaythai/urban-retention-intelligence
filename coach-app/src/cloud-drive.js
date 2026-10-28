@@ -60,10 +60,13 @@ export function cloudDriveHandler(api, now = () => Date.now()) {
         manifest.folderId !== config.folder_id ||
         manifest.folderId !== DRIVE_FOLDER ||
         !Array.isArray(manifest.files) ||
-        manifest.files.length !== 4
+        (manifest.files.length !== 4 && manifest.files.length !== 5)
       )
         return json(
-          { error: "Expected the four configured Drive exports" },
+          {
+            error:
+              "Expected the four configured Drive exports, plus optional attendance history",
+          },
           400,
         );
       const context = await api("rpc/clubworx_drive_context", {});

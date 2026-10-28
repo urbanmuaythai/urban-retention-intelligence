@@ -4,6 +4,8 @@ const MEMBER_CARE_FOLDER = "1e4X24ykUscsd67u4Uzp_qXx7dD8e3Li_";
 const MEMBER_CARE_URL =
   "https://uzbcsgjocpxhidjaduct.supabase.co/functions/v1/clubworx-drive-import";
 const MEMBER_CARE_REPORTS = ["246526", "246527", "246528", "246529"];
+// UMC 05 Attendance History: sent only when it was exported with the same batch.
+const MEMBER_CARE_HISTORY_REPORT = "246642";
 
 function syncMemberCare() {
   const lock = LockService.getScriptLock();
@@ -22,7 +24,12 @@ function syncMemberCare() {
       const file = iterator.next(),
         name = file.getName(),
         match = /^report_export_(\d+)_(\d{10})\.csv$/.exec(name);
-      if (!match || !MEMBER_CARE_REPORTS.includes(match[1])) continue;
+      if (
+        !match ||
+        (!MEMBER_CARE_REPORTS.includes(match[1]) &&
+          match[1] !== MEMBER_CARE_HISTORY_REPORT)
+      )
+        continue;
       const exported = Number(match[2]) * 1000;
       if (exported > now) continue;
       if (!newest[match[1]] || newest[match[1]].exported < exported)
@@ -51,6 +58,19 @@ function syncMemberCare() {
         status: "waiting",
         reason: "Waiting for one fresh same-day batch within 30 minutes.",
       });
+    const history = newest[MEMBER_CARE_HISTORY_REPORT];
+    if (
+      history &&
+      Utilities.formatDate(
+        new Date(history.exported),
+        "Australia/Brisbane",
+        "yyyy-MM-dd",
+      ) === dates[0] &&
+      Math.max(...batch.map((x) => x.exported), history.exported) -
+        Math.min(...batch.map((x) => x.exported), history.exported) <=
+        1800000
+    )
+      batch.push(history);
     const files = batch.map((x) => ({
       id: x.file.getId(),
       name: x.name,

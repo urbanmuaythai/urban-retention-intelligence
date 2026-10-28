@@ -73,7 +73,7 @@ test("archive-backed repeated-zero signals are labelled as observations, not inv
   assert.equal(summary.sequenceDates.at(-2), "2026-10-19");
   assert.equal(summary.historicalSync.archivedMembers, 1);
 });
-test("suspension overlap and a new membership prevent false historic zero streaks", () => {
+test("suspension weeks count as no session found; a first-week membership stays Review", () => {
   const rows = fixture();
   rows.suspensions = [
     {
@@ -90,7 +90,7 @@ test("suspension overlap and a new membership prevent false historic zero streak
     convertReports(reports, "2026-10-26", { Unlimited: 4 }, [], "2026-10-27", [
       baseline("2026-10-19"),
     ]).payload.members[0].priority,
-    "Review",
+    "Red",
   );
   rows.active[0]["Membership Start Date"] = "2026-10-26";
   reports = readReports(filesFor(rows));
@@ -149,5 +149,6 @@ test("eight observations support seven-week absence without changing the five-pr
     "2026-10-26",
     baselines,
   );
-  assert.equal(stable.payload.members[0].priority, "Review");
+  assert.equal(stable.payload.members[0].priority, "Red");
+  assert.match(stable.payload.members[0].signal, /Routine broken/);
 });

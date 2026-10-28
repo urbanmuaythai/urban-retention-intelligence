@@ -17,12 +17,12 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
     weekday = new Date(today + "T12:00:00Z").getUTCDay();
   const monday = addDays(today, -((weekday + 6) % 7));
   d.innerHTML = `<div class="modal-heading"><h2 id="import-title">Import weekly Clubworx reports</h2><button id="close-import" class="icon-button" aria-label="Close import">${icon("x")}</button></div>
-  <p>Select the four CSV exports together. We match Contact IDs, automatically check the files and prepare the weekly update as soon as you select them. Existing notes and exemptions stay attached to each member.</p>
+  <p>Select the four CSV exports together, plus Attendance history if you exported it. We match Contact IDs, automatically check the files and prepare the weekly update as soon as you select them. Existing notes and exemptions stay attached to each member.</p>
 
-  <p id="import-progress" role="status">Choose your four reports to begin.</p><p id="import-error" class="form-error" role="alert" tabindex="-1" hidden></p>
+  <p id="import-progress" role="status">Choose your four reports (plus Attendance history if exported) to begin.</p><p id="import-error" class="form-error" role="alert" tabindex="-1" hidden></p>
 
-  <label class="upload-zone">${icon("upload-cloud")}<strong>Choose the four Clubworx CSV reports</strong><input type="file" id="import-csv" multiple accept=".csv,text/csv"></label>
-  <p class="import-hint">Attendance · Active memberships · Suspensions · Cancellations. Export all four using the same cutoff, including members with zero attendance.</p>
+  <label class="upload-zone">${icon("upload-cloud")}<strong>Choose the Clubworx CSV reports</strong><input type="file" id="import-csv" multiple accept=".csv,text/csv"></label>
+  <p class="import-hint">Attendance · Active memberships · Suspensions · Cancellations, plus optional Attendance history (UMC 05). Export them all on the same day, including members with zero attendance.</p>
 
   <label class="import-date">Data as of (actual export date)<input type="date" id="import-as-of" value="${today}" max="${today}"></label>
 
@@ -102,8 +102,10 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
     $("#import-file").value = "";
     try {
       const files = [...e.target.files];
-      if (files.length !== 4)
-        throw Error("Select all four CSV reports together.");
+      if (files.length !== 4 && files.length !== 5)
+        throw Error(
+          "Select the four CSV reports together, plus Attendance history if exported.",
+        );
       if (files.some((f) => f.size > 10 * 1024 * 1024))
         throw Error("Each CSV must be under 10 MB.");
       const texts = await Promise.all(
@@ -124,6 +126,7 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
         "Files read. Confirm Data as of, then check the preview.";
 
       $("#csv-files").innerHTML = `<ul>${Object.entries(reportLabels)
+        .filter(([key]) => reports[key])
         .map(
           ([key, label]) =>
             `<li><strong>${label}</strong>: ${reports[key].rows.length} rows · ${esc(reports[key].name)}</li>`,
@@ -212,7 +215,7 @@ export function showImport({ store, onImported, decorate, esc, fmt, icon }) {
           )
           .join(" · ");
       $("#import-summary").innerHTML =
-        `<h3>Week beginning ${fmt(week)} · ${payload.members.length} members to assess</h3><p><strong>Data as of ${fmt(asOf)}</strong> · rolling attendance totals use the actual export date.</p><p>${s.historicalSync.archivedMembers} members linked to archived weekly summaries; ${s.historicalSync.engagementRecovered} engagement labels recovered. Older summary cutoffs may differ by one day; original dates remain visible.</p><p>${totals}</p><ul><li>${s.rosterContacts} people across ${s.membershipRows} membership rows; attendance counted once per person.</li><li>${s.eligible} eligible training members saved for weekly comparisons.</li><li>${s.currentSuspensions} currently suspended contacts held out; ${s.suspensionStatusHeld} additional contacts held by membership status.</li><li>${s.excludedProductRows} tour-payment memberships excluded; ${s.futureStartRows} future-start memberships excluded.</li><li>${s.noPriorWeeklyHistory} eligible people have no prior weekly snapshot here. Missing weeks stay unknown.</li></ul><div class="identity-warning"><strong>${s.review} members need review.</strong> CSVs may omit engagement labels and earlier weekly attendance. Review is separate from Red / Yellow / Watch; it flags missing context without assuming that missing attendance is zero.</div><p>Cancellations checked: ${s.flaggedCancellations} flagged records; ${s.effectiveCancellations} ended by the cutoff, excluding rollovers. These are source checks before the full retention report’s reporting window and administrative adjustments, and are not a published cancellation KPI.</p><p>Roster coverage may differ from the older tracked report. Preview the first 20 members below before importing. Raw CSV files stay in your browser; the reviewed snapshot and summary are saved to Supabase.</p><div class="import-preview"><table><thead><tr><th>Member</th><th>Priority</th><th>Signal</th></tr></thead><tbody>${
+        `<h3>Week beginning ${fmt(week)} · ${payload.members.length} members to assess</h3><p><strong>Data as of ${fmt(asOf)}</strong> · rolling attendance totals use the actual export date.</p><p>${s.historicalSync.archivedMembers} members linked to archived weekly summaries; ${s.historicalSync.engagementRecovered} engagement labels recovered. Older summary cutoffs may differ by one day; original dates remain visible.</p><p>${totals}</p><ul><li>${s.rosterContacts} people across ${s.membershipRows} membership rows; attendance counted once per person.</li><li>${s.eligible} eligible training members saved for weekly comparisons.</li><li>${s.currentSuspensions} currently suspended contacts held out; ${s.suspensionStatusHeld} additional contacts held by membership status.</li><li>${s.excludedProductRows} tour-payment memberships excluded; ${s.futureStartRows} future-start memberships excluded.</li><li>${s.noPriorWeeklyHistory} eligible people have no prior weekly snapshot here. Missing weeks stay unknown.</li>${s.attendanceHistory ? `<li>Attendance history: ${s.attendanceHistory.sessions} attended sessions from ${fmt(s.attendanceHistory.from)}; ${s.attendanceHistory.coveredWeeks} of 7 earlier weeks counted from actual session dates.</li>` : `<li>No Attendance history file: earlier weeks use saved snapshots.</li>`}</ul><div class="identity-warning"><strong>${s.review} members need review.</strong> CSVs may omit engagement labels and earlier weekly attendance. Review is separate from Red / Yellow / Watch; it flags missing context without assuming that missing attendance is zero.</div><p>Cancellations checked: ${s.flaggedCancellations} flagged records; ${s.effectiveCancellations} ended by the cutoff, excluding rollovers. These are source checks before the full retention report’s reporting window and administrative adjustments, and are not a published cancellation KPI.</p><p>Roster coverage may differ from the older tracked report. Preview the first 20 members below before importing. Raw CSV files stay in your browser; the reviewed snapshot and summary are saved to Supabase.</p><div class="import-preview"><table><thead><tr><th>Member</th><th>Priority</th><th>Signal</th></tr></thead><tbody>${
           payload.members
             .slice(0, 20)
             .map(

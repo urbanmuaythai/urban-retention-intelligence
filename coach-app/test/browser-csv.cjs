@@ -153,7 +153,24 @@ const assert = require("node:assert/strict");
     await page.locator("#confirm-identity").check();
     await page.locator("#import-csv").setInputFiles(fileInputs.slice(0, 3));
     assert.equal(await page.locator("#confirm-import").isDisabled(), true);
-    assert.match(await page.locator("#import-error").innerText(), /all four/);
+    assert.match(await page.locator("#import-error").innerText(), /four CSV reports/);
+    const historyFile = {
+      name: "history_2026-10-26.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        '"Contact ID","First Name","Last Name","Event Date","Event Starts","Event Name","Attended?"\r\n' +
+          '"123","Fictional","Member","2026-08-31","2026-08-31 17:15:00","All Levels","false"\r\n' +
+          '"123","Fictional","Member","2026-10-25","2026-10-25 09:00:00","All Levels","true"',
+      ),
+    };
+    // Optional fifth report: real session dates fill the earlier weekly bars.
+    await page.locator("#import-csv").setInputFiles([...fileInputs, historyFile]);
+    await page.locator("#confirm-identity").waitFor();
+    assert.match(
+      await page.locator("#import-summary").innerText(),
+      /Attendance history: 1 attended sessions from .*7 of 7 earlier weeks/,
+    );
+    assert.equal(imported, null, "Previewing history must not write");
     assert.equal(imported, null, "Incomplete batches must never be imported");
     await page.locator("#import-csv").setInputFiles(fileInputs);
     await page.locator("#preview-csv").waitFor({ state: "visible" });

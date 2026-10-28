@@ -41,13 +41,24 @@ const schemas = {
     "Cancellation Present?",
     "Cancellation Reason",
   ],
+  history: [
+    "Contact ID",
+    "First Name",
+    "Last Name",
+    "Event Date",
+    "Event Starts",
+    "Event Name",
+    "Attended?",
+  ],
 };
 export const reportLabels = {
   attendance: "Member attendance",
   active: "Active memberships",
   suspensions: "Suspensions",
   cancellations: "Cancellations",
+  history: "Attendance history",
 };
+const requiredReports = ["attendance", "active", "suspensions", "cancellations"];
 const nonTraining = (name) =>
   /^thailand tour (deposit|final payment)$/.test(norm(name));
 const date = (value, label, optional = false) => {
@@ -134,9 +145,9 @@ export function parseCSV(input) {
 }
 
 export function readReports(files) {
-  if (files.length !== 4)
+  if (files.length !== 4 && files.length !== 5)
     throw Error(
-      "Choose exactly four CSV files: attendance, active memberships, suspensions and cancellations.",
+      "Choose the four CSV files (attendance, active memberships, suspensions and cancellations), plus attendance history if exported.",
     );
   const reports = {},
     dates = new Set();
@@ -171,12 +182,43 @@ export function readReports(files) {
     throw Error(
       "The filenames have different report dates. Export all four reports for the same cutoff.",
     );
+  const missing = requiredReports.filter((kind) => !reports[kind]);
+  if (missing.length)
+    throw Error(
+      `Missing ${missing.map((kind) => reportLabels[kind]).join(", ")}. Attendance history is the only optional report.`,
+    );
   reports.suggestedWeek = [...dates][0] || null;
   if (!reports.attendance.rows.length || !reports.active.rows.length)
     throw Error(
       "Attendance and Active Memberships must contain members, including zero-attendance members.",
     );
   return reports;
+}
+
+// One row per booking or check-in. Clubworx has no booking ID, so Contact ID +
+// Event Starts + Event Name is the key. Coverage starts at the earliest event date.
+function sessionHistory(report, asOf) {
+  if (!report) return null;
+  const seen = new Set(),
+    sessions = new Map();
+  let from = null;
+  for (const row of report.rows) {
+    const day = date(row["Event Date"].slice(0, 10), "Attendance history date");
+    if (!from || day < from) from = day;
+    if (!flag(row["Attended?"], "Attended?")) continue;
+    if (day > asOf)
+      throw Error(
+        `Attendance history has a session after the selected report cutoff (${asOf}): ${day} for Contact ID ${row["Contact ID"]}. Export it on the same day as the other reports.`,
+      );
+    const key = [row["Contact ID"], row["Event Starts"], row["Event Name"]].join(
+      "|",
+    );
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (!sessions.has(row["Contact ID"])) sessions.set(row["Contact ID"], []);
+    sessions.get(row["Contact ID"]).push(day);
+  }
+  return from ? { from, sessions } : null;
 }
 
 export function membershipTargets(reports) {
@@ -208,7 +250,15 @@ export function membershipTargets(reports) {
     });
 }
 
-function classify(s7, s30, sequence, target, engagement, archived = false) {
+function classify(
+  s7,
+  s30,
+  sequence,
+  target,
+  engagement,
+  archived = false,
+  settled = true,
+) {
   const prior = sequence.slice(-6, -1),
     known = prior.filter((x) => x !== null);
   const prev = prior.at(-1),
@@ -228,8 +278,18 @@ function classify(s7, s30, sequence, target, engagement, archived = false) {
         ? `Repeated zero · ${streak} weekly snapshots`
         : `Ghosting · ${streak} straight zero weeks`,
     ];
+  // Consistent recent weeks, then nothing: on target first, then any attendance.
+  const recent = sequence.slice(-4, -1);
+  if (s7 === 0 && recent.length === 3 && recent.every((n) => n > 0)) {
+    if (target !== null && recent.every((n) => n >= target))
+      return ["Red", `Was on target · 3 weeks at ${target}+ → 0`];
+    return ["Red", "Routine broken · 3 weeks attending → 0"];
+  }
   if (s7 === 0 && ((prev ?? 0) >= 2 || average >= 2))
     return ["Red", `Sharp stop · ${prev ?? average.toFixed(1)} → 0`];
+  // Missing weeks count as no session found; members in their first week stay in Review.
+  if (settled && s7 === 0 && !s30 && !sequence.slice(-7).some((n) => n > 0))
+    return ["Red", "No sessions found · last 7 weeks"];
   if (s7 === 0 && s30 > 0) return ["Yellow", `New zero · ${s30} visits in 30d`];
   if (s7 > 0 && ((prev ?? s7) >= s7 + 2 || average - s7 >= 1.5))
     return ["Yellow", `Cooling · ${prev ?? average.toFixed(1)} → ${s7}`];
@@ -422,7 +482,16 @@ export function convertReports(
         effectiveCancellations++;
     }
   }
-  const historical = resolveHistory(week, asOf, history, baselines);
+  const sessions = sessionHistory(reports.history, asOf);
+  // Real session dates replace saved snapshots for every week the export fully covers.
+  const covered = [];
+  const historical = resolveHistory(week, asOf, history, baselines).map(
+    (slot, i) => {
+      const cutoff = addDays(asOf, (i - 7) * 7);
+      covered[i] = !!sessions && addDays(cutoff, -6) >= sessions.from;
+      return covered[i] ? { date: cutoff, archived: false, rows: null } : slot;
+    },
+  );
   const members = [],
     snapshot = [];
   let held = 0,
@@ -467,8 +536,12 @@ export function convertReports(
       .map((p) => p["Membership Start Date"])
       .sort()[0];
     const sequence = historical
-      .map((slot) => {
-        const count = slot.rows.get(member_id)?.s7 ?? null;
+      .map((slot, i) => {
+        const count = covered[i]
+          ? (sessions.sessions.get(id) || []).filter(
+              (day) => day >= addDays(slot.date, -6) && day <= slot.date,
+            ).length
+          : (slot.rows.get(member_id)?.s7 ?? null);
         if (membershipStart > addDays(asOf, -6)) return null;
         if (count === 0 && membershipStart > addDays(slot.date, -6))
           return null;
@@ -484,7 +557,7 @@ export function convertReports(
       })
       .concat(a.s7);
     const usesArchive = historical.some(
-      (slot, i) => slot.archived && sequence[i] !== null,
+      (slot, i) => slot.archived && !covered[i] && sequence[i] !== null,
     );
     if (usesArchive) archivedMembers++;
     const engagement = a.engagement
@@ -500,6 +573,7 @@ export function convertReports(
       target,
       a.engagement || engagement?.value || "",
       usesArchive,
+      membershipStart <= addDays(asOf, -6),
     );
     if (classification)
       members.push({
@@ -565,6 +639,16 @@ export function convertReports(
         "Exact rolling cutoffs preferred; archived Monday summaries may differ by one day and retain their original dates.",
     },
     sequenceDates: historical.map((slot) => slot.date).concat(asOf),
+    attendanceHistory: sessions
+      ? {
+          from: sessions.from,
+          coveredWeeks: covered.filter(Boolean).length,
+          sessions: [...sessions.sessions.values()].reduce(
+            (sum, days) => sum + days.length,
+            0,
+          ),
+        }
+      : null,
     review: members.filter((m) => m.priority === "Review").length,
     flaggedCancellations,
     effectiveCancellations,

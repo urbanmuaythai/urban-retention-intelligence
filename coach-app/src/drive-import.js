@@ -14,6 +14,8 @@ export const CONTEXT_SQL = `select jsonb_build_object(
 'events',(select coalesce(jsonb_agg(jsonb_build_object('id',e.id,'hash',md5(row(e.*)::text))),'[]'::jsonb) from public.outreach_events e),
 'admin',(select jsonb_build_object('id',s.id,'active',s.active,'role',s.role) from public.staff s join auth.users u on u.id=s.id where lower(u.email)='getfit@urbanmuaythai.com' and s.active and s.role='admin' limit 1)) as context;`;
 export const REPORT_IDS = ["246526", "246527", "246528", "246529"];
+// UMC 05 Attendance History is optional: used only when it belongs to the same batch.
+export const HISTORY_REPORT_ID = "246642";
 const dateInBrisbane = (value) =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: "Australia/Brisbane",
@@ -30,14 +32,18 @@ export function selectDriveBatch(entries, previous = null, now = Date.now()) {
   for (const item of entries) {
     const name = item.name || item.title || item.file_name || "";
     const match = /^report_export_(\d+)_(\d{10})\.csv$/.exec(name);
-    if (!match || !REPORT_IDS.includes(match[1])) continue;
+    if (
+      !match ||
+      (!REPORT_IDS.includes(match[1]) && match[1] !== HISTORY_REPORT_ID)
+    )
+      continue;
     const exported = Number(match[2]) * 1000;
     if (exported > now || !item.id) continue;
     const file = { ...item, name, reportId: match[1], exported };
     if (!newest.has(match[1]) || newest.get(match[1]).exported < exported)
       newest.set(match[1], file);
   }
-  if (newest.size !== 4)
+  if (REPORT_IDS.some((id) => !newest.has(id)))
     return {
       status: "waiting",
       reason: "Waiting for all four configured reports.",
@@ -76,6 +82,14 @@ export function selectDriveBatch(entries, previous = null, now = Date.now()) {
       reason:
         "All four reports must be freshly exported before replacing the saved batch.",
     };
+  const history = newest.get(HISTORY_REPORT_ID);
+  if (
+    history &&
+    dateInBrisbane(history.exported) === dateInBrisbane(times[0]) &&
+    Math.max(...times, history.exported) - Math.min(...times, history.exported) <=
+      30 * 60 * 1000
+  )
+    files.push(history);
   return { status: "ready", asOf: dateInBrisbane(times[0]), files };
 }
 

@@ -5,6 +5,7 @@ import {
   prepareDriveImport,
   DRIVE_FOLDER,
   REPORT_IDS,
+  HISTORY_REPORT_ID,
 } from "../../scripts/drive-member-care.mjs";
 import { fixture, filesFor } from "./csv-fixtures.mjs";
 const start = Date.parse("2026-10-26T00:00:00Z");
@@ -72,7 +73,7 @@ test("automatic conversion reuses validation and makes guarded idempotent SQL wi
   };
   const result = prepareDriveImport(manifest, context, now);
   assert.equal(result.status, "ready");
-  assert.equal(result.payload.members[0].priority, "Review");
+  assert.equal(result.payload.members[0].priority, "Red");
   assert.match(result.sql, /pg_advisory_xact_lock/);
   assert.match(result.sql, /Reports changed/);
   assert.match(result.sql, /import_retention_week/);
@@ -95,4 +96,20 @@ test("automatic pickup cannot replace a later same-day manual import with older 
   const manifest = {folderId:DRIVE_FOLDER,files:files().map(f=>({...f,text:"not read when an older batch is held"}))};
   const context = {weeks:[{week:"2026-10-26",imported_at:new Date(now).toISOString(),import_summary:{asOf:"2026-10-26"}}],members:[],baselines:[]};
   assert.equal(prepareDriveImport(manifest,context,now).status,"waiting");
+});
+test("Drive sync adds attendance history only when it belongs to the same batch", () => {
+  const history = (offset) => ({
+    id: "fictional-history",
+    name: `report_export_${HISTORY_REPORT_ID}_${start / 1000 + offset}.csv`,
+  });
+  const ready = selectDriveBatch([...files(), history(60)], null, now);
+  assert.equal(ready.status, "ready");
+  assert.deepEqual(
+    ready.files.map((f) => f.reportId),
+    [...REPORT_IDS, HISTORY_REPORT_ID],
+  );
+  const late = selectDriveBatch([...files(), history(3600)], null, now + 3600_000);
+  assert.equal(late.status, "ready");
+  assert.equal(late.files.length, 4);
+  assert.equal(selectDriveBatch([history(60)], null, now).status, "waiting");
 });

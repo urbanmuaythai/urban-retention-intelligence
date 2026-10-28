@@ -37,7 +37,7 @@ test("four reports are detected by columns, not file selection order", () => {
   assert.equal(reports.attendance.rows.length, 1);
   assert.throws(
     () => readReports(filesFor(fixture()).slice(0, 3)),
-    /exactly four/,
+    /four CSV files/,
   );
   const files = filesFor(fixture());
   files[0].name = "attendance_2026-10-19.csv";
@@ -56,9 +56,10 @@ test("multiple memberships do not multiply attendance and IDs are stable", () =>
     /greater than 30-day|conflicting attendance/,
   );
 });
-test("incomplete context is Review; missing weeks are never fabricated as zero", () => {
+test("no sessions found in the last 7 weeks is Red; missing weeks are never fabricated as zero", () => {
   const result = convert(fixture());
-  assert.equal(result.payload.members[0].priority, "Review");
+  assert.equal(result.payload.members[0].priority, "Red");
+  assert.match(result.payload.members[0].signal, /No sessions found/);
   assert.deepEqual(result.payload.members[0].sequence, [
     null,
     null,
@@ -91,7 +92,7 @@ test("complete snapshots include healthy members and enable later sharp stops an
   prior[0].attendance_snapshot[0].s7 = 0;
   assert.match(convert(fixture(), prior).payload.members[0].signal, /Ghosting/);
   prior[0].week = "2026-10-12";
-  assert.equal(convert(fixture(), prior).payload.members[0].priority, "Review");
+  assert.match(convert(fixture(), prior).payload.members[0].signal, /No sessions found/);
 });
 test("known Fringe labels retain Watch and cooling rules remain ordered", () => {
   assert.equal(
@@ -256,7 +257,7 @@ test("cutoff dates drive suspension holds and history must be seven days apart",
   assert.equal(
     convertReports(reports, week, { Unlimited: 4 }, [prior], "2026-10-27")
       .payload.members[0].priority,
-    "Review",
+    "Red",
   );
   rows.suspensions = [
     {
@@ -278,4 +279,75 @@ test("cutoff dates drive suspension holds and history must be seven days apart",
       ),
     /No eligible training members/,
   );
+});
+const session = (day, attended = "true", name = "All Levels") => ({
+  "Contact ID": "123",
+  "First Name": "Fictional",
+  "Last Name": "Member",
+  "Event Date": day,
+  "Event Starts": day + " 17:15:00",
+  "Event Name": name,
+  "Attended?": attended,
+});
+test("attendance history is an optional fifth report detected by its columns", () => {
+  const rows = { ...fixture(), history: [session("2026-08-31")] };
+  const reports = readReports(filesFor(rows).reverse());
+  assert.equal(reports.history.rows.length, 1);
+  const missing = filesFor(rows).filter((f) => !f.name.startsWith("suspensions"));
+  assert.throws(() => readReports(missing), /Missing Suspensions/);
+});
+test("attendance history counts real session dates into each earlier week", () => {
+  const rows = fixture();
+  rows.history = [
+    session("2026-08-31", "false"),
+    session("2026-09-10"),
+    session("2026-09-10"),
+    session("2026-09-12", "true", "Kickstarter"),
+    session("2026-09-13", "false"),
+  ];
+  const { payload, summary } = convert(rows);
+  const member = payload.members[0];
+  assert.deepEqual(member.sequence, [0, 2, 0, 0, 0, 0, 0, 0]);
+  assert.equal(member.priority, "Red");
+  assert.match(member.signal, /Ghosting · 6 straight zero weeks/);
+  assert.equal(summary.sequenceDates[0], "2026-09-07");
+  assert.deepEqual(summary.attendanceHistory, {
+    from: "2026-08-31",
+    coveredWeeks: 7,
+    sessions: 2,
+  });
+});
+test("attendance history only replaces weeks it fully covers and rejects sessions after the cutoff", () => {
+  const rows = fixture();
+  rows.history = [session("2026-10-01"), session("2026-10-08")];
+  const { payload, summary } = convert(rows);
+  assert.deepEqual(payload.members[0].sequence, [
+    null, null, null, null, null, 1, 0, 0,
+  ]);
+  assert.equal(summary.attendanceHistory.coveredWeeks, 2);
+  rows.history = [session("2026-09-01"), session("2026-10-27")];
+  assert.throws(() => convert(rows), /after the selected report cutoff/);
+});
+test("three attending weeks then zero is Red: on-target first, then broken routine", () => {
+  const rows = fixture();
+  rows.history = [
+    session("2026-08-31", "false"),
+    session("2026-09-30"),
+    session("2026-10-07"),
+    session("2026-10-14"),
+  ];
+  let member = convert(rows).payload.members[0];
+  assert.deepEqual(member.sequence.slice(-4), [1, 1, 1, 0]);
+  assert.equal(member.priority, "Red");
+  assert.match(member.signal, /Routine broken · 3 weeks attending/);
+  rows.history.push(
+    ...["2026-10-01", "2026-10-02", "2026-10-03"].map((d) => session(d)),
+    ...["2026-10-08", "2026-10-09", "2026-10-10"].map((d) => session(d)),
+    ...["2026-10-15", "2026-10-16", "2026-10-17"].map((d) => session(d)),
+  );
+  member = convert(rows).payload.members[0];
+  assert.equal(member.priority, "Red");
+  assert.match(member.signal, /Was on target · 3 weeks at 4\+/);
+  rows.history = [session("2026-08-31", "false"), session("2026-10-07"), session("2026-10-14")];
+  assert.doesNotMatch(convert(rows).payload.members[0].signal, /Routine|on target/);
 });
