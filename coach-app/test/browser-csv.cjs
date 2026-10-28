@@ -306,8 +306,9 @@ const assert = require("node:assert/strict");
     );
     await page.locator("#attendance-stage").selectOption("Extended absence");
     assert.match(await page.locator("tbody").innerText(), /Extended absence/);
+    // Phone cards hide the long stage detail; it stays in the row for wider screens.
     assert.match(
-      await page.locator("tbody").innerText(),
+      await page.locator("tbody").textContent(),
       /8 consecutive zero-attendance snapshots/,
     );
     await page.locator("#attendance-stage").selectOption("Disengaged");

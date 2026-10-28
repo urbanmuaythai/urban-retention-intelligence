@@ -2867,94 +2867,180 @@ tbody tr:hover {
     min-width: 0;
   }
 }
-/* Phone portal: a compact heading and three short rows, each with its icon in a
-   circle, so every section is visible without scrolling. */
+/* Phone portal: a compact heading and three round widgets in one row. Sizes
+   follow the screen width, so the row fits any phone. */
 @media (max-width: 600px) {
   .portal-main {
-    padding: 22px 0 28px;
+    padding: 18px 0 24px;
   }
   .portal-main .page-heading {
-    gap: 14px;
-    margin-bottom: 12px;
+    gap: 12px;
+    margin-bottom: 10px;
   }
   .portal-main h1 {
-    font-size: 30px;
+    font-size: clamp(24px, 8vw, 32px);
   }
   .portal-main .page-heading p {
     font-size: 12px;
   }
   .portal-main .report-period {
-    font-size: 11px;
+    font-size: clamp(10px, 2.9vw, 11px);
     line-height: 1.6;
-    margin-bottom: 14px;
+    margin-bottom: 18px;
   }
   .portal-main .workspace-choices {
-    gap: 10px;
+    --ring: clamp(80px, 25vw, 112px);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
   }
-  .portal-main .workspace-choice {
+  .portal-main .workspace-choice,
+  .portal-main .workspace-choice:first-child,
+  .portal-main .workspace-choice:hover {
     min-height: 0;
-    padding: 14px 16px;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 0;
+    border: 0;
+    background: none;
+    backdrop-filter: none;
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--ring) auto;
     grid-template-areas:
-      "icon heading count"
-      "icon detail count";
-    column-gap: 14px;
-    row-gap: 3px;
-    align-items: center;
-    border-top-width: 1px;
-    border-left: 3px solid var(--gold);
+      "ring"
+      "heading";
+    row-gap: 8px;
+    justify-items: center;
+    text-align: center;
   }
-  .portal-main .workspace-choice:first-child {
-    border-top-color: #a5b4d34a;
-    border-left-color: var(--red);
+  .portal-main .workspace-choice::before {
+    content: "";
+    grid-area: ring;
+    width: var(--ring);
+    height: var(--ring);
+    border-radius: 50%;
+    background: rgba(14, 21, 40, 0.88);
+    border: 3px solid var(--gold);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  }
+  .portal-main .workspace-choice:first-child::before {
+    border-color: var(--red);
+  }
+  .portal-main .workspace-choice:hover::before {
+    background: rgba(30, 40, 66, 0.96);
+  }
+  .portal-main .workspace-choice:focus-visible {
+    outline: 0;
+  }
+  .portal-main .workspace-choice:focus-visible::before {
+    outline: 3px solid var(--gold);
+    outline-offset: 3px;
+  }
+  .portal-main .choice-icon,
+  .portal-main .choice-count {
+    grid-area: ring;
+    position: relative;
   }
   .portal-main .choice-icon {
-    grid-area: icon;
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: rgba(245, 185, 33, 0.14);
-    border: 1px solid rgba(245, 185, 33, 0.4);
+    align-self: start;
+    margin-top: calc(var(--ring) * 0.2);
   }
   .portal-main .workspace-choice:first-child .choice-icon {
     color: #ff5a6e;
-    background: rgba(200, 16, 46, 0.2);
-    border-color: rgba(200, 16, 46, 0.55);
   }
   .portal-main .choice-icon svg {
-    width: 20px;
-    height: 20px;
+    width: calc(var(--ring) * 0.2);
+    height: calc(var(--ring) * 0.2);
+  }
+  .portal-main .choice-count {
+    align-self: end;
+    margin-bottom: calc(var(--ring) * 0.17);
+    font-size: calc(var(--ring) * 0.3);
+    line-height: 1;
   }
   .portal-main .choice-heading {
     grid-area: heading;
-    font-size: 16px;
+    font-size: clamp(11px, 3.3vw, 14px);
+    line-height: 1.25;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
   }
-  .portal-main .choice-detail {
-    grid-area: detail;
-    font-size: 11px;
-    line-height: 1.45;
-  }
-  .portal-main .choice-count {
-    grid-area: count;
-    font-size: 24px;
-    min-width: 2ch;
-    text-align: right;
-  }
+  .portal-main .choice-detail,
   .portal-main .choice-link {
     display: none;
   }
 }
-@media (max-width: 400px) {
-  .portal-main .choice-detail {
+/* Phone reach-out list: one compact card per member.
+   Name and open arrow, then the risk line, then weeks and outreach status. */
+@media (max-width: 760px) {
+  .queue-panel tbody tr:has(.member-button) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "member open"
+      "risk risk"
+      "weeks status";
+    gap: 8px 12px;
+    align-items: center;
+    padding: clamp(10px, 3.2vw, 14px) clamp(12px, 4vw, 16px);
+  }
+  .queue-panel tbody tr:has(.member-button) td,
+  .queue-panel tbody tr:has(.member-button) td:first-child,
+  .queue-panel tbody tr:has(.member-button) td:last-child {
+    position: static;
+    width: auto;
+    padding: 0;
+  }
+  .queue-panel tbody tr:has(.member-button) td::before {
     display: none;
   }
-  .portal-main .workspace-choice {
-    grid-template-areas: "icon heading count";
-    padding: 12px 14px;
+  .queue-panel tbody tr:has(.member-button) td:nth-child(1) {
+    grid-area: member;
   }
-  .portal-main .report-period {
+  .queue-panel tbody tr:has(.member-button) td:nth-child(2) {
+    grid-area: risk;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px 8px;
+  }
+  .queue-panel tbody tr:has(.member-button) td:nth-child(3) {
+    grid-area: weeks;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  .queue-panel tbody tr:has(.member-button) td:nth-child(4) {
+    grid-area: status;
+    text-align: right;
+  }
+  .queue-panel tbody tr:has(.member-button) td:nth-child(5) {
+    grid-area: open;
+  }
+  .queue-panel .member-button .avatar {
+    width: clamp(30px, 9vw, 36px);
+    height: clamp(30px, 9vw, 36px);
+    font-size: 11px;
+  }
+  .queue-panel .member-button strong {
+    font-size: clamp(13px, 3.8vw, 15px);
+  }
+  .queue-panel .member-button small {
+    margin-top: 2px;
+    font-size: 11px;
+  }
+  .queue-panel td .stage-detail,
+  .queue-panel td .status-detail {
+    display: none;
+  }
+  .queue-panel td .signal {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .queue-panel td .session-label {
+    margin: 0 0 0 4px;
     font-size: 10px;
+    white-space: nowrap;
+  }
+  .queue-panel td .status-label {
+    font-size: 11px;
+    white-space: nowrap;
   }
 }
