@@ -6,9 +6,10 @@ The installed Google Apps Script runs independently of this computer. It checks 
 
 1. Open https://script.google.com/home/start in the gym Google account. Create a standalone project named **Urban Member Care sync**.
 2. Replace `Code.gs` with the complete contents of `scripts/member-care-trigger.gs` and save.
-3. Open Project Settings > Script properties. Add `MEMBER_CARE_TOKEN` using the private activation file prepared outside this repository. This is an integration token, not a Supabase service key. Keep the project restricted to authorised administrators; project editors can read script properties.
-4. Select **installMemberCareTriggers** and click **Run**. Review and approve Google's requested access. It reads the export folder, calls Member Care, and creates two triggers. The installer tests the sync first; it will refuse installation if the four reports are incomplete or validation fails.
-5. In **Executions**, confirm an `unchanged` or `imported` receipt, and in **Triggers** confirm exactly two `syncMemberCare` triggers (Monday and Friday). Then disable the Codex heartbeat `sync-clubworx-exports-to-member-care`. Until these checks succeed, retain the existing fallback.
+3. In Project Settings, turn on **Show appsscript.json manifest file in editor**. Open that file and replace it with `scripts/member-care-appsscript.json`. This limits Drive permission to reading; the other two permissions allow the Member Care request and your two triggers.
+4. Open Project Settings > Script properties. Add `MEMBER_CARE_TOKEN` using only the `token` value from `../member-care-trigger-activation.private.json` outside this repository. This is an integration token, not a Supabase service key. Keep the project restricted to authorised administrators; project editors can read script properties.
+5. Select **installMemberCareTriggers** and click **Run**. Review and approve Google's requested access. It reads the export folder, calls Member Care, and creates two triggers. The installer tests the sync first; it will refuse installation if the four reports are incomplete or validation fails.
+6. In **Executions**, confirm an `unchanged` or `imported` receipt, and in **Triggers** confirm exactly two `syncMemberCare` triggers (Monday and Friday). Then disable the Codex heartbeat `sync-clubworx-exports-to-member-care`. Until these checks succeed, retain the existing fallback.
 
 No web app deployment or public Google sharing is needed. Google's trigger failure notifications identify required attention; no member messages are sent. `MEMBER_CARE_LAST_CHECK` stores a status/count-only receipt. Missing batches wait; a batch incomplete for more than four days fails visibly. Errors do not advance any import checkpoint.
 

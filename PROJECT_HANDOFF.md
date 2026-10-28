@@ -5,10 +5,10 @@ Updated 28 October 2026 (Australia/Brisbane). Read this before rediscovering the
 ## Locations and delivery
 
 - Source repository: this `public-site` folder; GitHub `urbanmuaythai/urban-retention-intelligence`.
-- Source branch: `codex/coach-outreach`. Latest feature commits: `a060e4f` (attendance stages), `e8ed838` (Drive sync and automatic CSV preview), `2afcb60` (metadata-only routine checks).
+- Source branch: `codex/coach-outreach`. Latest feature commit: `08ed3e7` (cloud trigger preparation and cancellation history). Earlier feature commits remain in Git history.
 - Source app: `coach-app`, Vite + vanilla JavaScript. Use existing dependencies and lockfile.
 - Live app: https://urbanmuaythai.github.io/urban-retention-intelligence/member-care/
-- Deployment: sibling folder `../member-care-publish`, detached checkout of Pages `main`; latest verified published commit `efbe5b819c4413794cf67306ede7ee8fe0d6cc2b`.
+- Deployment: sibling folder `../member-care-publish`, detached checkout of Pages `main`; latest verified published commit `12175bef4c07992dec5633fe2b74016c1ba1a739`.
 - Root report `index.html` is separate from Member Care. App revisions normally change only source app paths and the published `member-care/` directory.
 - Supabase project reference: `uzbcsgjocpxhidjaduct`; approved administrator: getfit@urbanmuaythai.com. There is no default password.
 - Production client settings already exist in local `coach-app/.env.local`; do not print or commit them. Never put service-role keys in the frontend.
@@ -111,3 +111,6 @@ Cancellations now show selected Fri–Thu period, previous period, complete-peri
 The current 27 October source was SHA-256 matched against all four saved Drive files; only `weekly_reports.import_summary.operations` was backfilled using an imported_at guard (no risk/member/note edits). Ten available cancellation periods start21August (first source end24August), latest23–29October partialthrough27October count1; prior16–22October count17; scheduledfuture9. Existing risks269/notes2 preserved.
 
 Verification:65 automated tests plus production build and mobile CSV/portal/history/future/navigation browser workflow with mocked Supabase, no live test member writes. Google installer tested with mocked Google services for successful preflight, MO/FR timezone, repeat-safe installation, incomplete-batch refusal and retaining other triggers.
+
+
+Release verification follow-up: Pages commit12175bef4c07992dec5633fe2b74016c1ba1a739 is built and the hosted production browser workflow passed. Source feature commit08ed3e7 is saved locally. A cloud dry-run with copied exports, explicitly synthetic newer timestamps and harmless trailing newlines, returned validated269 without database writes; the actual saved batch still returns unchanged. Use `scripts/member-care-appsscript.json` during Google setup for explicit read-only Drive, external-request and trigger-management scopes. Installation and actual Google execution remain pending.
