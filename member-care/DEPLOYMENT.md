@@ -69,3 +69,6 @@ Plan exclusions and phone layout (28 October 2026): Kickstarter, Sponsored, Pers
 
 
 Download app button (29 October 2026): sign-in page and staff portal show a "Download app" button. It uses the browser's install prompt where available (Chrome/Edge, Android); otherwise it opens step-by-step instructions for iPhone (Safari Share → Add to Home Screen), Android or desktop. Hidden when already opened as an installed app. Source commits `db990ff`, `a357b79` (sign-in card stays within phone width). Verified with 71 automated tests, production build, and browser checks of the button, steps dialog and phone layout.
+
+
+Phone bottom tabs (29 October 2026): on phones the At Risk section tabs (At Risk, Follow-ups, Handled, All, Reports) sit in a bar fixed to the bottom of the screen, like the NMS; counts show on At Risk and Follow-ups. The Clubworx import and historical-summary notes are no longer shown. Fixed the attendance-stage menu running under the search box and the Fri–Thu period picker spilling out at 320px. Desktop sidebar unchanged. Source commit `8cb6dba`. Verified with 71 automated tests, production build and browser checks at 320, 360 and desktop widths.
