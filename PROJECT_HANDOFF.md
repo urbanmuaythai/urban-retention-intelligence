@@ -132,3 +132,11 @@ All five UMC reports (246526–246529, 246642) export daily at 04:00 from Clubwo
 Database fix (28 October 2026): `import_clubworx_drive_batch` refused anything but exactly four Drive files, so the first five-file batch (with UMC 05) failed with the generic "Import was not confirmed". Migration `20261028080000_drive_batch_attendance_history.sql` rewrites only that check in the live definition to accept 4 or 5 (applied with `supabase db query --linked`; grants unchanged: postgres and service_role). The re-exported 28 October batch then imported 255 members with 109 Red. The import banner now names five-file batches and the 30-minute Google check.
 
 Gmail-to-Drive timer changed (28 October 2026, user request, to stay well inside the free Gmail account's daily trigger quota): `saveMemberCareEmailAttachments` now runs daily 05:00–06:00 Brisbane instead of every 10 minutes; its installer in the Google project was updated to match. Daily path: Clubworx 04:00 exports → Drive 05:00–06:00 → Member Care import at the next 30-minute check. A manual daytime export reaches Member Care the next morning unless both scripts are run by hand. Member Care is also installable as a phone app (manifest and Urban logo icons in `coach-app/public`).
+
+
+## Phone layout and reporting redesign (29 October 2026)
+
+- Download app button (`coach-app/src/install.js`) on sign-in and portal: browser install prompt where offered, otherwise iPhone/Android/desktop steps.
+- Phones (≤760px): At Risk section tabs are a fixed bottom bar (At Risk, Follow-ups, Handled, All, Reports); counts only on At Risk/Follow-ups and hidden at zero. Import/historical-summary notices were removed from the At Risk page.
+- Reporting tab no longer uses tables: Red and all-priority coverage rings, Flagged/Contacted/Still to reach/Handled tiles, tappable priority bars (open the list filtered to that priority), Team activity (outcomes, notes, per-author updates from `weekActivity`), Attendance stage bars (`stageBreakdown`) and a 12-week Red coverage chart plus week list. `weeklyOutreachReport` counting rules are unchanged; it adds `outstanding` (no contact and not handled/exempt).
+- Verified: 74 unit tests, production build and the mocked mobile CSV browser workflow.

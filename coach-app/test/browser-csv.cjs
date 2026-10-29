@@ -529,29 +529,19 @@ const assert = require("node:assert/strict");
     await reportingRead;
     await page.locator('[data-view="reporting"]').click();
     await page.getByRole("heading", { name: "Weekly reporting." }).waitFor();
-    const reportRows = page
-      .locator(".reporting-panel")
-      .first()
-      .locator("tbody tr");
-    assert.deepEqual(await reportRows.first().locator("td").allTextContents(), [
-      "1",
-      "1",
-      "0",
-      "100%",
-      "0",
-    ]);
-    assert.equal(await page.locator("[data-report-week]").count(), 2);
-    await page.locator('[data-report-week="2026-10-19"]').click();
-    assert.deepEqual(
-      await page
-        .locator(".reporting-panel")
-        .first()
-        .locator("tbody tr")
-        .first()
-        .locator("td")
-        .allTextContents(),
-      ["1", "0", "1", "0%", "0"],
-    );
+    const redBar = page.locator('[data-report-priority="Red"]');
+    const barValues = async () =>
+      redBar.evaluate((b) => [
+        b.dataset.flagged,
+        b.dataset.contacted,
+        b.dataset.noContact,
+        b.dataset.coverage,
+        b.dataset.held,
+      ]);
+    assert.deepEqual(await barValues(), ["1", "1", "0", "100%", "0"]);
+    assert.equal(await page.locator(".week-row[data-report-week]").count(), 2);
+    await page.locator('.week-row[data-report-week="2026-10-19"]').click();
+    assert.deepEqual(await barValues(), ["1", "0", "1", "0%", "0"]);
     await page.locator("#week").selectOption("2026-10-26");
     await page.locator("#report-open-red").click();
     assert.equal(

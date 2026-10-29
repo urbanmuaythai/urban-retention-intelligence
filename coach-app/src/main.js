@@ -268,7 +268,7 @@ function render() {
  )
    .map(
      ([id, ic, label, n, short = label]) =>
-       `<button class="nav-item ${view === id ? "selected" : ""}" data-view="${id}" aria-label="${label}">${icon(ic)}<span class="nav-long">${label}</span><span class="nav-short" aria-hidden="true">${short}</span><b>${n}</b></button>`,
+       `<button class="nav-item ${view === id ? "selected" : ""}" data-view="${id}" aria-label="${label}">${icon(ic)}<span class="nav-long">${label}</span><span class="nav-short" aria-hidden="true">${short}</span><b${n === 0 ? ' class="zero"' : ""}>${n}</b></button>`,
    )
    .join("")}</nav>
  <div class="sidebar-note"><div class="note-icon">${icon("heart-handshake")}</div><strong>A small check-in.<br>A stronger community.</strong><p>Reach out, leave context, and give the next team member a clear next step.</p></div>
@@ -392,6 +392,16 @@ function bind() {
     (b) =>
       (b.onclick = () => {
         week = b.dataset.reportWeek;
+        render();
+      }),
+  );
+  document.querySelectorAll("[data-report-priority]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        view = "all";
+        priority = b.dataset.reportPriority;
+        stage = "All";
+        search = "";
         render();
       }),
   );
