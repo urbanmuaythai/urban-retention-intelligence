@@ -3334,3 +3334,6 @@ tbody tr:hover {
 .login-page:has(.login-install) {
   flex-direction: column;
 }
+.login-page:has(.login-install) > .login-card {
+  max-width: 100%;
+}
