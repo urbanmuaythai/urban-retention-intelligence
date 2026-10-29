@@ -297,10 +297,6 @@ const assert = require("node:assert/strict");
     await page.getByRole("button", { name: "Red", exact: true }).click();
     assert.match(await page.locator("tbody").innerText(), /Repeated zero/);
     assert.match(
-      await page.locator(".history-notice").innerText(),
-      /Historical weekly summaries linked/,
-    );
-    assert.match(
       await page.locator(".attendance-point").nth(6).getAttribute("data-date"),
       /2026-10-19/,
     );

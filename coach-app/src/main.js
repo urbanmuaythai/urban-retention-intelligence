@@ -251,11 +251,11 @@ function render() {
  <button class="portal-return" data-view="home">${icon("arrow-up-right")} Back to portal</button><div class="nav-label">${outreachArea ? "AT RISK MEMBERS" : view.toUpperCase()}</div><nav aria-label="Workspace">
  ${(outreachArea
    ? [
-       ["queue", "users", "At Risk Members", active.length],
-       ["due", "calendar-clock", "Follow-ups due", due],
-       ["handled", "circle-check", "Handled & exempt", handled],
-       ["all", "users", "All risk members", all.length],
-       ["reporting", "calendar-days", "Reporting", store.data.weeks.length],
+       ["queue", "users", "At Risk Members", active.length, "At Risk"],
+       ["due", "calendar-clock", "Follow-ups due", due, "Follow-ups"],
+       ["handled", "circle-check", "Handled & exempt", handled, "Handled"],
+       ["all", "users", "All risk members", all.length, "All"],
+       ["reporting", "calendar-days", "Reporting", store.data.weeks.length, "Reports"],
      ]
    : [
        [
@@ -267,8 +267,8 @@ function render() {
      ]
  )
    .map(
-     ([id, ic, label, n]) =>
-       `<button class="nav-item ${view === id ? "selected" : ""}" data-view="${id}">${icon(ic)}<span>${label}</span><b>${n}</b></button>`,
+     ([id, ic, label, n, short = label]) =>
+       `<button class="nav-item ${view === id ? "selected" : ""}" data-view="${id}" aria-label="${label}">${icon(ic)}<span class="nav-long">${label}</span><span class="nav-short" aria-hidden="true">${short}</span><b>${n}</b></button>`,
    )
    .join("")}</nav>
  <div class="sidebar-note"><div class="note-icon">${icon("heart-handshake")}</div><strong>A small check-in.<br>A stronger community.</strong><p>Reach out, leave context, and give the next team member a clear next step.</p></div>
@@ -286,8 +286,6 @@ function render() {
    .join(
      "",
    )}</select></span></label>${store.user.role === "admin" ? `<button class="button secondary" id="import-open">${icon("upload")} Import week</button>` : ""}</div></div>
- ${store.data.weeks.find((w) => w.week === week)?.import_summary?.historicalSync?.archivedMembers ? `<p class="history-notice">${icon("calendar-clock")}<span><strong>Historical weekly summaries linked.</strong> ${store.data.weeks.find((w) => w.week === week).import_summary.historicalSync.archivedMembers} eligible members have archived attendance context. Original snapshot dates are shown on the history bars. Archived Monday cutoffs may differ from this export by one day; these are weekly observations, not individual attendance dates.</span></p>` : ""}
- ${report?.import_summary?.driveSync ? `<p class="history-notice drive-source">${icon("refresh-cw")}<span><strong>Imported from Clubworx Exports.</strong> ${report.import_summary.driveSync.files?.length === 5 ? "Five matching CSV reports, including attendance history" : "Four matching CSV reports"} · saved ${esc(stamp(report.imported_at))}. Google checks the Clubworx Exports folder every 30 minutes.</span></p>` : ""}
  <section class="metric-grid" aria-label="Outreach summary">
  ${[
    [active.length, "To reach out", "Members in the action queue", "inbox", ""],

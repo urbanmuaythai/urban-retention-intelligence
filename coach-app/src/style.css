@@ -214,6 +214,9 @@ textarea::placeholder {
 .nav-item svg {
   width: 17px;
 }
+.nav-item .nav-short {
+  display: none;
+}
 .nav-item span {
   flex: 1;
 }
@@ -3075,22 +3078,84 @@ tbody tr:hover {
     padding: 7px 10px;
     font-size: 11px;
   }
+  /* Section tabs sit in a bar fixed to the bottom of the screen (as in NMS). */
   .sidebar nav {
-    grid-column: 1 / -1;
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 30;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-    gap: 6px;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: 0;
     margin: 0;
+    padding: 0 0 env(safe-area-inset-bottom);
+    background: #101326f2;
+    border-top: 1px solid var(--line);
+    backdrop-filter: blur(8px);
   }
-  .sidebar .nav-item {
+  .sidebar nav:has(.nav-item:only-child) {
+    display: none;
+  }
+  .sidebar .nav-item,
+  .sidebar .nav-item.selected,
+  .sidebar .nav-item:hover:not(.selected) {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    padding: 7px 6px;
+    gap: 3px;
+    min-height: 58px;
+    margin: 0;
+    padding: 6px 2px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--muted);
     font-size: 10px;
-    gap: 5px;
-    border-radius: 8px;
+    font-weight: 600;
+  }
+  .sidebar .nav-item.selected {
+    color: var(--gold);
   }
   .sidebar .nav-item svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+  }
+  .sidebar .nav-item .nav-long {
     display: none;
+  }
+  .sidebar .nav-item .nav-short {
+    display: block;
+    white-space: nowrap;
+  }
+  .sidebar .nav-item b,
+  .sidebar .nav-item.selected b {
+    position: absolute;
+    top: 4px;
+    left: calc(50% + 6px);
+    min-width: 0;
+    margin: 0;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-size: 9px;
+    line-height: 15px;
+  }
+  .sidebar .nav-item b:empty,
+  .sidebar .nav-item[data-view="all"] b,
+  .sidebar .nav-item[data-view="reporting"] b,
+  .sidebar .nav-item[data-view="handled"] b {
+    display: none;
+  }
+  .sidebar .nav-item span {
+    flex: none;
+  }
+  .workspace:has(.sidebar .nav-item + .nav-item) {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
   }
   .topbar {
     height: auto;
@@ -3114,11 +3179,13 @@ tbody tr:hover {
   }
   .main-shell main .page-heading .heading-actions {
     order: 1;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 8px;
   }
+  /* Never shrink below the date text; the button wraps to its own row instead. */
   .main-shell main .page-heading .week-control {
-    flex: 1 1 auto;
+    flex: 1 0 auto;
+    max-width: 100%;
     justify-content: center;
   }
   .main-shell main .page-heading #import-open {
@@ -3247,9 +3314,11 @@ tbody tr:hover {
     font-size: 0;
     gap: 0;
     margin: 0;
+    min-width: 0;
   }
   .queue-panel .stage-filter select {
     width: 100%;
+    min-width: 0;
     height: 100%;
     min-height: 36px;
     font-size: 12px;
