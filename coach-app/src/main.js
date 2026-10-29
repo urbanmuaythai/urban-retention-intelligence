@@ -28,6 +28,7 @@ import {
   Eye,
   EyeOff,
   LockKeyhole,
+  Download,
 } from "lucide";
 import "@fontsource/inter/latin-400.css";
 import "@fontsource/inter/latin-600.css";
@@ -44,6 +45,7 @@ import {
 import { attendanceStage, ATTENDANCE_STAGES } from "./attendance-stage.js";
 const hideAttendanceTooltip = installAttendanceTooltips();
 import { reportingView } from "./reporting.js";
+import { installButton, bindInstall } from "./install.js";
 import { showImport } from "./import-dialog.js";
 import {
   Workspace,
@@ -82,6 +84,7 @@ const icons = {
   Eye,
   EyeOff,
   LockKeyhole,
+  Download,
 };
 const esc = (s) =>
   String(s ?? "").replace(
@@ -143,6 +146,7 @@ function decorate() {
           cell.dataset.label = labels[i];
       });
   }
+  bindInstall(icon, decorate);
 }
 function rows() {
   return projectRows(store.data.risks, store.data.events, week);
@@ -234,6 +238,7 @@ function render() {
       user: store.user,
       demo: store.demo,
       operationPeriod,
+      install: installButton(icon),
     });
     bind();
     decorate();
@@ -639,7 +644,7 @@ function lockWorkspace() {
 }
 function authFrame(title, description, content) {
   $("#app").innerHTML =
-    `<main class="login-page"><div class="login-brand"><img src="${urbanLogo}" alt="Urban Muaythai logo" width="54" height="54"><div>URBAN MUAYTHAI <span>MEMBER CARE</span></div></div><section class="login-card"><div class="login-icon">${icon("lock-keyhole")}</div><div class="eyebrow">URBAN MUAYTHAI · STAFF ACCESS</div><h1>${title}</h1><p>${description}</p>${content}<div class="login-foot">${icon("shield-check")} Individual staff accounts · access approved by your administrator</div></section></main>`;
+    `<main class="login-page"><div class="login-brand"><img src="${urbanLogo}" alt="Urban Muaythai logo" width="54" height="54"><div>URBAN MUAYTHAI <span>MEMBER CARE</span></div></div><section class="login-card"><div class="login-icon">${icon("lock-keyhole")}</div><div class="eyebrow">URBAN MUAYTHAI · STAFF ACCESS</div><h1>${title}</h1><p>${description}</p>${content}<div class="login-foot">${icon("shield-check")} Individual staff accounts · access approved by your administrator</div></section>${installButton(icon, "login-install")}</main>`;
   decorate();
 }
 function bindPasswordToggle() {

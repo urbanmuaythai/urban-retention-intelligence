@@ -3284,3 +3284,53 @@ tbody tr:hover {
     display: none;
   }
 }
+
+/* Download app button and install steps */
+.portal-account .install-app {
+  border-color: var(--gold);
+  color: #fff;
+}
+.login-install {
+  margin: 18px auto 0;
+  background: #11182bc9;
+  color: #fff;
+  border-color: var(--gold);
+}
+.install-dialog {
+  width: min(420px, calc(100vw - 32px));
+  border-radius: 14px;
+}
+.install-card {
+  position: relative;
+  padding: 26px 24px 22px;
+}
+.install-card h2 {
+  margin: 6px 0 8px;
+}
+.install-card p {
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+.install-card ol {
+  margin: 0 0 20px;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+}
+.install-card .button {
+  width: 100%;
+}
+.install-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+@media (max-width: 760px) {
+  .portal-account .install-app {
+    font-size: 11px;
+    padding: 9px;
+  }
+}
+.login-page:has(.login-install) {
+  flex-direction: column;
+}
