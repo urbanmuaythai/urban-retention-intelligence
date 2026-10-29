@@ -66,3 +66,6 @@ Minimal phone cards (28 October 2026): member, stage and reason only; priority s
 
 
 Plan exclusions and phone layout (28 October 2026): Kickstarter, Sponsored, Personal Trainer, Class Pass and Trial memberships are skipped at import; compact phone At Risk header, counts and filters; centred phone portal header; app named Urban Muaythai Member Care. Source commit `093700e`.
+
+
+Download app button (29 October 2026): sign-in page and staff portal show a "Download app" button. It uses the browser's install prompt where available (Chrome/Edge, Android); otherwise it opens step-by-step instructions for iPhone (Safari Share → Add to Home Screen), Android or desktop. Hidden when already opened as an installed app. Source commit `db990ff`. Verified with 71 automated tests, production build, and browser checks of the button, steps dialog and phone layout.
