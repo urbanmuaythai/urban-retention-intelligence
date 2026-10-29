@@ -72,3 +72,6 @@ Download app button (29 October 2026): sign-in page and staff portal show a "Dow
 
 
 Phone bottom tabs (29 October 2026): on phones the At Risk section tabs (At Risk, Follow-ups, Handled, All, Reports) sit in a bar fixed to the bottom of the screen, like the NMS; counts show on At Risk and Follow-ups. The Clubworx import and historical-summary notes are no longer shown. Fixed the attendance-stage menu running under the search box and the Fri–Thu period picker spilling out at 320px. Desktop sidebar unchanged. Source commit `8cb6dba`. Verified with 71 automated tests, production build and browser checks at 320, 360 and desktop widths.
+
+
+Reporting redesign (29 October 2026): the Reporting tab now shows Red and all-priority coverage rings, Flagged / Contacted / Still to reach / Handled tiles, tappable priority bars, Team activity (outcomes, notes, updates per team member), attendance-stage bars and a 12-week Red coverage chart with a week list — no sideways-scrolling tables on phones. Counting rules unchanged. Bottom-tab badges hide at zero. Source commit `b02508e`. Verified with 74 automated tests, production build and the mocked mobile browser workflow.
