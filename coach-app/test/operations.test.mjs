@@ -19,7 +19,12 @@ test("weekly operations keep effective cancellations separate from notices and e
   const f = fixture();
   const original = f.cancellations[0];
   f.cancellations = [
-    { ...original, "Membership ID": "ended", "Membership Expiry Date": asOf },
+    // Last day 26 Oct = cancellation date 27 Oct (expiry + 1), inside this partial week.
+    {
+      ...original,
+      "Membership ID": "ended",
+      "Membership Expiry Date": "2026-10-26",
+    },
     {
       ...original,
       "Membership ID": "old",
@@ -39,13 +44,13 @@ test("weekly operations keep effective cancellations separate from notices and e
     {
       ...original,
       "Membership ID": "roll",
-      "Membership Expiry Date": asOf,
+      "Membership Expiry Date": "2026-10-26",
       "Cancellation Reason": "Roll Over",
     },
     {
       ...original,
       "Membership ID": "admin",
-      "Membership Expiry Date": asOf,
+      "Membership Expiry Date": "2026-10-26",
       "Cancellation Reason": "Bad debt",
     },
   ];
@@ -171,13 +176,15 @@ test("Friday-Thursday date boundaries include Friday/Sunday and exclude the prec
       operations: buildOperations(reports, week, asOf, policy),
     },
   });
+  // Cancellation date = expiry + 1: a Thursday expiry is cancelled on Friday (this week);
+  // a Thursday-of-this-week expiry belongs to next week.
   assert.deepEqual(
     operationWeek(make("2026-10-27")).cancellations.map((r) => r.end),
-    ["2026-10-23", "2026-10-25"],
+    ["2026-10-22", "2026-10-23", "2026-10-25"],
   );
   assert.deepEqual(
     operationWeek(make("2026-10-29")).cancellations.map((r) => r.end),
-    ["2026-10-23", "2026-10-25", "2026-10-29"],
+    ["2026-10-22", "2026-10-23", "2026-10-25"],
   );
   const legacy = {
     week,
@@ -254,8 +261,8 @@ test("cancellation archive uses dated Friday weeks and separates scheduled ends 
   const f = fixture(),
     r = f.cancellations[0];
   f.cancellations = [
-    ["previous", "2026-10-22", "Moved"],
-    ["current", "2026-10-23", "Moved"],
+    ["previous", "2026-10-21", "Moved"],
+    ["current", "2026-10-22", "Moved"],
     ["scheduled", "2026-10-29", "Moved"],
     ["roll", "2026-11-04", "Roll Over"],
     ["admin", "2026-11-05", "Bad debt"],
@@ -324,5 +331,126 @@ test("cancellation archive uses dated Friday weeks and separates scheduled ends 
     upcomingCancellations([record, next]),
     null,
     "Missing latest future details must not fall back to stale ones",
+  );
+});
+
+test("cancellations split into autopay (counted) and all, using the Cancellation Analysis categories", async () => {
+  const { categoriseCancellation } =
+    await import("../src/cancellation-category.js");
+  const cat = (m) => categoriseCancellation(m);
+  assert.deepEqual(cat("Accelerate WEEKLY 6 month membership"), {
+    counted: true,
+    group: "Adults",
+    type: "Adults",
+  });
+  assert.deepEqual(cat("Teens Class (2x per week)"), {
+    counted: true,
+    group: "Teens",
+    type: "Teens",
+  });
+  assert.deepEqual(cat("15-18 years (3x per week)"), {
+    counted: true,
+    group: "Teens",
+    type: "Teens",
+  });
+  assert.deepEqual(cat("Kids Class Unlimited"), {
+    counted: true,
+    group: "Kids",
+    type: "Kids",
+  });
+  assert.equal(cat("Kickstarter Program Upfront").type, "Kickstarter");
+  assert.equal(cat("Kickstarter Program Weekly").type, "Kickstarter");
+  assert.equal(cat("15 - 18 years Kickstarter Program").type, "Kickstarter");
+  assert.equal(cat("Teens 1 Week Trial").type, "Trial");
+  assert.equal(cat("Short Term Membership Unlimited").type, "Short Term");
+  assert.equal(cat("Upfront Adult Membership Special").type, "Upfront");
+  assert.equal(cat("10 Class Pass").type, "Casual / class pass");
+  assert.equal(cat("Kickstarter Program Upfront").counted, false);
+
+  const f = fixture(),
+    r = f.cancellations[0];
+  f.cancellations = [
+    ["a1", "Accelerate WEEKLY 6 month membership"],
+    ["k1", "Kids Class Unlimited"],
+    ["ks", "Kickstarter Program Weekly"],
+    ["st", "Short Term Membership Unlimited"],
+  ].map(([id, m]) => ({
+    ...r,
+    "Membership ID": id,
+    "Membership Name": m,
+    "Membership Expiry Date": "2026-10-24",
+  }));
+  const record = {
+    week,
+    import_summary: {
+      asOf,
+      retentionPolicy: policy,
+      operations: buildOperations(readReports(filesFor(f)), week, asOf, policy),
+    },
+  };
+  const ops = operationWeek(record);
+  assert.deepEqual(ops.cancellations.map((x) => x.membership_id).sort(), [
+    "a1",
+    "k1",
+    "ks",
+    "st",
+  ]);
+  assert.deepEqual(ops.autopay.map((x) => x.membership_id).sort(), [
+    "a1",
+    "k1",
+  ]);
+  assert.equal(
+    ops.cancellations.find((x) => x.membership_id === "a1").cancelled,
+    "2026-10-25",
+  );
+  const html = workspaceView(
+    { weeks: [record], risks: [], events: [] },
+    week,
+    "cancellations",
+    {
+      esc: String,
+      fmt: String,
+      icon: () => "",
+    },
+  );
+  assert.match(html, /Autopay cancellations/);
+  assert.match(html, /All cancellations/);
+  assert.match(html, /Not counted · Kickstarter/);
+});
+
+test("a cancelled plan whose member holds another active plan is a membership change, not counted", () => {
+  const f = fixture(),
+    r = f.cancellations[0];
+  f.cancellations = [
+    ["left", "999", "Accelerate WEEKLY 6 month membership", "Moving"],
+    ["moved", "123", "15-18 years (3x per week)", "Changing plans"],
+    ["typed", "777", "15-18 years (Unlimited)", "Downgrade"],
+  ].map(([id, contact, m, reason]) => ({
+    ...r,
+    "Contact ID": contact,
+    "Membership ID": id,
+    "Membership Name": m,
+    "Membership Expiry Date": "2026-10-24",
+    "Cancellation Reason": reason,
+  }));
+  const record = {
+    week,
+    import_summary: {
+      asOf,
+      retentionPolicy: policy,
+      operations: buildOperations(readReports(filesFor(f)), week, asOf, policy),
+    },
+  };
+  const ops = operationWeek(record);
+  assert.deepEqual(
+    ops.autopay.map((x) => x.membership_id),
+    ["left"],
+  );
+  assert.deepEqual(
+    ops.cancellations
+      .filter((x) => x.type === "Membership change")
+      .map((x) => x.membership_id)
+      .sort(),
+    ["moved", "typed"],
   );
 });
