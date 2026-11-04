@@ -147,6 +147,19 @@ export class Workspace {
     if (error) throw error;
     await this.load();
   }
+  /** Who trained since the report, straight from Clubworx (Edge Function). { results: { member_id: { last, event, count } } } */
+  async liveAttendance(since, memberIds) {
+    if (this.demo) {
+      // Preview: the first two members show how a live result looks. Fictional, like the rest of the sample.
+      const at = `${since}T18:00:00.000+10:00`;
+      const results = Object.fromEntries(memberIds.slice(0, 2).map((id, i) => [id, { last: at, event: "All Levels", count: i + 1 }]));
+      return { checkedAt: new Date().toISOString(), since, results, matched: memberIds.length, unmatched: 0, demo: true };
+    }
+    if (!client) throw new Error("Staff sign-in is not connected yet.");
+    const { data, error } = await client.functions.invoke("clubworx-live-attendance", { body: { since, memberIds } });
+    if (error) throw new Error((await error.context?.json?.().catch(() => null))?.error || "Live check unavailable right now.");
+    return data;
+  }
   async import(payload) {
     validateImport(payload);
     if (this.demo)

@@ -3828,3 +3828,29 @@ tbody tr:hover {
     display: none;
   }
 }
+
+/* Live "trained since report" check (Clubworx API) */
+.live-trained {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--green) 55%, transparent);
+  border-radius: 5px;
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 12%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+}
+.live-trained svg {
+  width: 12px;
+  height: 12px;
+}
+.risk-callout > .live-trained {
+  margin-bottom: 4px;
+}
+.queue-panel td .live-detail {
+  display: block;
+}
