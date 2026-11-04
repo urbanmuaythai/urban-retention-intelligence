@@ -1,0 +1,8 @@
+node_modules/
+coach-app/dist/
+coach-app/.env*
+!coach-app/.env.example
+.vercel/
+.netlify/
+*.private.json
+test-results/
