@@ -41,6 +41,8 @@ export class Workspace {
         ...event,
         author: (event.author || "Urban Team").replace(/\bcoach\b/gi, "team"),
       }));
+      this.data.fringeOutreach ??= [];
+      this.data.fringeTracking = true;
       this.user = this.data.staff[0];
       return this.data;
     }
@@ -95,6 +97,14 @@ export class Workspace {
       readAll("staff", "id,display_name,role,active", "id"),
       readAll("attendance_baselines", "*", "as_of"),
     ]);
+    // Fringe reach-out log; the app keeps working (read-only Fringe list) until the table exists.
+    let fringeOutreach = [],
+      fringeTracking = true;
+    try {
+      fringeOutreach = await readAll("fringe_outreach", "*", "member_id");
+    } catch {
+      fringeTracking = false;
+    }
     const map = new Map(members.map((m) => [m.id, m]));
     const names = new Map(team.map((m) => [m.id, m.display_name]));
     this.data = {
@@ -107,6 +117,8 @@ export class Workspace {
         author: names.get(e.created_by) || "Former staff",
       })),
       staff: team,
+      fringeOutreach,
+      fringeTracking,
     };
     return this.data;
   }
@@ -143,6 +155,43 @@ export class Workspace {
       p_assigned_to: action.assigned_to || null,
       p_expected_revision: member.revision,
       p_request_id: action.request_id || crypto.randomUUID(),
+    });
+    if (error) throw error;
+    await this.load();
+  }
+  async saveFringe(week, memberId, entry) {
+    const row = {
+      week,
+      member_id: memberId,
+      method: entry.method || null,
+      contacted_on: entry.contacted_on || null,
+      notes: (entry.notes || "").trim(),
+      validated: !!entry.validated,
+    };
+    if (row.notes.length > 4000) throw Error("Notes can be up to 4000 characters.");
+    if (this.demo) {
+      const next = structuredClone(this.data);
+      next.fringeOutreach = next.fringeOutreach.filter(
+        (r) => !(r.week === week && r.member_id === memberId),
+      );
+      next.fringeOutreach.push({
+        ...row,
+        updated_by: this.user.id,
+        updated_at: new Date().toISOString(),
+      });
+      localStorage.setItem(storageKey, JSON.stringify(next));
+      this.data = next;
+      return;
+    }
+    if (!this.data.fringeTracking)
+      throw Error("Fringe reach-out saving isn't switched on yet. Ask your administrator.");
+    const { error } = await client.rpc("save_fringe_outreach", {
+      p_week: week,
+      p_member_id: memberId,
+      p_method: row.method,
+      p_contacted_on: row.contacted_on,
+      p_notes: row.notes,
+      p_validated: row.validated,
     });
     if (error) throw error;
     await this.load();

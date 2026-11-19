@@ -2,16 +2,24 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 const root = new URL("../", import.meta.url);
+/** Follow `./x.js` imports from coach-app/src so a new shared file is never left out. */
+export function sharedModules(start) {
+  const seen = new Set(),
+    queue = [...start];
+  while (queue.length) {
+    const name = queue.shift();
+    if (seen.has(name)) continue;
+    seen.add(name);
+    const src = fs.readFileSync(new URL(`coach-app/src/${name}.js`, root), "utf8");
+    for (const [, dep] of src.matchAll(/from\s+["']\.\/([\w-]+)\.js["']/g)) queue.push(dep);
+  }
+  return [...seen];
+}
+
 export function edgeBundle() {
   const entry = "supabase/functions/clubworx-drive-import/index.ts";
-  const modules = [
-    "cloud-drive",
-    "drive-import",
-    "csv-import",
-    "domain",
-    "history",
-    "operations",
-  ];
+  // Every shared module the entrypoint reaches through relative imports.
+  const modules = sharedModules(["cloud-drive"]);
   return [
     {
       name: "index.ts",

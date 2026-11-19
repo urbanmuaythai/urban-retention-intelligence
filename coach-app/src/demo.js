@@ -128,6 +128,51 @@ const examples = [
     [2, 1, 2, 1, 0],
   ],
 ];
+// Fictional Fringe list: trained this week but under their weekly target.
+const fringeExamples = [
+  ["Harper Quinn", "Accelerate WEEKLY 6 month membership", 4, 1, 6],
+  ["Ethan Cole", "Fun & Fitness (3 classes per week) Weekly T6", 3, 1, 5],
+  ["Isla Morgan", "Accelerate WEEKLY 6 month membership", 4, 2, 9],
+  ["Lucas Hart", "Short Term Membership Unlimited", 4, 3, 12],
+  ["Ruby Lane", "Teens Class (2x classes)", 2, 1, 6],
+  ["Max Rowe", "15-18 years (3x per week) 2023", 3, 2, 8],
+];
+function demoFringe(week) {
+  const members = fringeExamples.map(([name, membership, target, s7, s30], i) => ({
+    member_id: "demo-fringe-" + i,
+    name,
+    phone: "0400 000 00" + i,
+    membership,
+    group: /teen|15-18/i.test(membership) ? "U18" : "Adults",
+    target,
+    s7,
+    s30,
+    last: addDays(week, -1),
+  }));
+  return {
+    members,
+    review: [
+      {
+        member_id: "demo-fringe-review",
+        name: "Kai Brooks",
+        phone: null,
+        membership: "Teens Upfront Membership",
+        group: "U18",
+        target: null,
+        s7: 1,
+        s30: 4,
+        last: addDays(week, -3),
+      },
+    ],
+    sleepers: 9,
+    engaged: 14,
+    excluded: 2,
+    groups: {
+      Adults: { bands: [7, 2, 1, 3, 7], sleepers: 7, fringe: 4, engaged: 9, review: 0 },
+      U18: { bands: [2, 2, 1, 1, 4], sleepers: 2, fringe: 2, engaged: 5, review: 1 },
+    },
+  };
+}
 export function demoData() {
   const weeks = ["2026-10-26", "2026-11-02", "2026-11-09"];
   const members = examples.map((r, i) => ({
@@ -152,7 +197,9 @@ export function demoData() {
     weeks: weeks.map((week) => ({
       week,
       source_label: "Sample weekly snapshot",
+      import_summary: { asOf: week, fringe: demoFringe(week) },
     })),
+    fringeOutreach: [],
     members,
     risks,
     events: [

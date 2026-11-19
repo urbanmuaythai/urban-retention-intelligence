@@ -2679,7 +2679,7 @@ tbody tr:hover {
   margin-bottom: 24px;
 }
 .portal-main .workspace-choices {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 22px;
 }
 .portal-main .workspace-choice {
@@ -2893,7 +2893,7 @@ tbody tr:hover {
   }
   .portal-main .workspace-choices {
     --ring: clamp(80px, 25vw, 112px);
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
   .portal-main .workspace-choice,
@@ -3853,4 +3853,163 @@ tbody tr:hover {
 }
 .queue-panel td .live-detail {
   display: block;
+}
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 6px;
+  font-weight: 600;
+}
+.check-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gold);
+}
+@media (max-width: 1180px) and (min-width: 761px) {
+  .portal-main .workspace-choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* Phone Fringe cards: name + reach-out chip, then target, sessions and last visit. */
+@media (max-width: 760px) {
+  .queue-panel .fringe-table tbody tr:has(.member-button) {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "member status open"
+      "risk week last";
+  }
+  .queue-panel .fringe-table tbody tr:has(.member-button) td:nth-child(3) {
+    display: block;
+    grid-area: week;
+    font-size: 12px;
+  }
+  .queue-panel .fringe-table tbody tr:has(.member-button) td:nth-child(3) small {
+    display: none;
+  }
+  .queue-panel .fringe-table tbody tr:has(.member-button) td:nth-child(4) {
+    grid-area: last;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .queue-panel .fringe-table tbody tr:has(.member-button) td:nth-child(5) {
+    grid-area: status;
+  }
+  .queue-panel .fringe-table tbody tr:has(.member-button) td:nth-child(6) {
+    grid-area: open;
+  }
+}
+.clubworx-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+.clubworx-actions .button {
+  flex: 1 1 180px;
+  justify-content: center;
+  text-decoration: none;
+}
+.row-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+/* Fringe reporting: session bands like the Pipeline Party dashboard. */
+.band-0 { --band: #e5484d; }
+.band-1 { --band: #f08c2e; }
+.band-2 { --band: #e9c03b; }
+.band-3 { --band: #4c8df6; }
+.band-4 { --band: #3fb36b; }
+.band-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--band);
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.band-pill {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--band);
+  border: 1px solid color-mix(in srgb, var(--band) 55%, transparent);
+  background: color-mix(in srgb, var(--band) 14%, transparent);
+}
+.report-fill[class*="band-"] {
+  background: var(--band);
+}
+.band-table {
+  width: 100%;
+}
+.band-table th,
+.band-table td {
+  white-space: nowrap;
+}
+.band-table tr.current td {
+  background: var(--surface-soft);
+}
+.band-bar-cell {
+  width: 30%;
+  min-width: 90px;
+}
+.fringe-report-grid > .queue-panel {
+  grid-column: 1 / -1;
+}
+.link-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--gold);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+/* Phone: band tables stay real tables (scroll sideways) instead of stacked cards. */
+@media (max-width: 760px) {
+  .queue-panel .band-table {
+    display: table;
+    width: 100%;
+  }
+  .queue-panel .band-table thead {
+    display: table-header-group;
+  }
+  .queue-panel .band-table tbody {
+    display: table-row-group;
+  }
+  .queue-panel .band-table tr {
+    display: table-row;
+    padding: 0;
+  }
+  .queue-panel .band-table th,
+  .queue-panel .band-table td,
+  .queue-panel .band-table td:first-child {
+    display: table-cell;
+    width: auto;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
+    overflow-wrap: normal;
+    font-size: 12px;
+  }
+  .queue-panel .band-table td::before {
+    display: none;
+  }
+  .queue-panel .band-table .band-bar-cell {
+    display: none;
+  }
+}
+.carried-note {
+  display: block;
+  color: #3fb36b;
+  font-weight: 650;
+}
+@media (max-width: 760px) {
+  .queue-panel td .signal.carried-note {
+    display: block;
+  }
 }

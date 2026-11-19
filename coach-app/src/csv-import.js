@@ -1,6 +1,7 @@
 import { buildOperations } from "./operations.js";
 import { addDays, norm, validateImport } from "./domain.js";
 import { resolveHistory, archivedEngagement } from "./history.js";
+import { buildFringe } from "./fringe.js";
 
 const schemas = {
   attendance: [
@@ -389,6 +390,7 @@ export function convertReports(
       name: `${row["First Name"]} ${row["Last Name"]}`.trim(),
       phone: row["Phone Number"] || null,
       engagement: row.Engagement || "",
+      last,
     });
   }
   const membershipIds = new Set();
@@ -502,7 +504,8 @@ export function convertReports(
     },
   );
   const members = [],
-    snapshot = [];
+    snapshot = [],
+    fringePeople = [];
   let held = 0,
     statusHeld = 0,
     noMembership = 0,
@@ -575,6 +578,15 @@ export function convertReports(
     if (engagement) engagementRecovered++;
     if (sequence.slice(0, -1).every((x) => x === null)) noHistory++;
     snapshot.push({ member_id, s7: a.s7, s30: a.s30 });
+    fringePeople.push({
+      member_id,
+      name: a.name,
+      phone: a.phone,
+      plans: currentPlans.map((r) => r["Membership Name"]),
+      s7: a.s7,
+      s30: a.s30,
+      last: a.last,
+    });
     const classification = classify(
       a.s7,
       a.s30,
@@ -619,6 +631,11 @@ export function convertReports(
     retentionPolicy,
     operations: buildOperations(reports, week, asOf, retentionPolicy, history),
     targets,
+    fringe: buildFringe(
+      fringePeople,
+      targets,
+      history.find((w) => w.week === week)?.import_summary?.fringe?.members,
+    ),
 
     asOf,
 

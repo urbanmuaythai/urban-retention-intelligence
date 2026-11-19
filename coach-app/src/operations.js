@@ -1,5 +1,14 @@
 import { addDays, norm, projectRows } from "./domain.js";
 import { categoriseCancellation } from "./cancellation-category.js";
+import { fringeContacts, needsContact } from "./fringe.js";
+
+/** Fringe members on this report week with no reach-out recorded yet (null before a Fringe import). */
+export function fringeToContact(data, week) {
+  const fringe = data.weeks.find((w) => w.week === week)?.import_summary?.fringe;
+  if (!fringe) return null;
+  const contacts = fringeContacts(data.fringeOutreach, week);
+  return fringe.members.filter((m) => needsContact(m, contacts.get(m.member_id))).length;
+}
 
 /** Cancellation date = the first day the member is no longer active (expiry + 1), as in the Cancellation Analysis sheet. */
 export const cancellationDate = (r) => (r.end ? addDays(r.end, 1) : null);
@@ -392,6 +401,13 @@ export function workspaceView(
             (r) => !r.suppressed,
           ).length,
           "users",
+        ],
+        [
+          "fringe",
+          "Fringe Reach-out",
+          "Members who trained but are under their weekly target. Adults and U18.",
+          fringeToContact(data, week),
+          "heart-handshake",
         ],
         [
           "cancellations",

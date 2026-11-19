@@ -45,6 +45,8 @@ import {
 import { attendanceStage, ATTENDANCE_STAGES } from "./attendance-stage.js";
 const hideAttendanceTooltip = installAttendanceTooltips();
 import { reportingView } from "./reporting.js";
+import { fringeReportingView } from "./fringe-reporting.js";
+import { fringeToContact } from "./operations.js";
 import { installButton, bindInstall } from "./install.js";
 import { showImport } from "./import-dialog.js";
 import {
@@ -56,6 +58,7 @@ import {
 } from "./store.js";
 import { STATUS, addDays, brisbaneToday, projectRows } from "./domain.js";
 import { trainedLabel } from "./live-attendance.js";
+import { fringeView, fringeContacts, targetLabel, FRINGE_METHODS, clubworxButtons } from "./fringe.js";
 
 const $ = (s) => document.querySelector(s);
 const icons = {
@@ -118,6 +121,7 @@ let store,
   priority = "All",
   stage = "All",
   search = "",
+  fringeState = { group: "All", status: "To contact", search: "" },
   selected = null,
   busy = false,
   pendingRefresh = false,
@@ -244,7 +248,9 @@ function initials(name) {
 function render() {
   hideAttendanceTooltip();
   const focus = document.activeElement?.id;
-  const cursor = focus === "search" ? $("#search").selectionStart : null;
+  const cursor = ["search", "fringe-search"].includes(focus)
+    ? $("#" + focus).selectionStart
+    : null;
   const all = rows(),
     active = all.filter((r) => !r.suppressed),
     handled = all.length - active.length,
@@ -275,11 +281,17 @@ function render() {
     decorate();
     return;
   }
-  const outreachArea = !["cancellations", "suspensions"].includes(view);
+  const fringeArea = ["fringe", "fringe-reporting"].includes(view);
+  const outreachArea =
+    !fringeArea && !["cancellations", "suspensions"].includes(view);
+  const areaNames = {
+    cancellations: ["flag", "Cancellations"],
+    suspensions: ["calendar-clock", "Suspensions"],
+  };
   $("#app").innerHTML = `<div class="workspace">
  <aside class="sidebar"><button class="brand brand-button" type="button" data-view="home" aria-label="Return to portal"><img class="brand-logo" src="${urbanLogo}" alt="Urban Muaythai logo" width="58" height="58"><span>URBAN<span class="brand-sub">MUAYTHAI</span></span></button>
  <div class="workspace-tag"><span class="tiny-dot"></span> RETENTION WORKSPACE</div>
- <button class="portal-return" data-view="home">${icon("arrow-up-right")} Back to portal</button><div class="nav-label">${outreachArea ? "AT RISK MEMBERS" : view.toUpperCase()}</div><nav aria-label="Workspace">
+ <button class="portal-return" data-view="home">${icon("arrow-up-right")} Back to portal</button><div class="nav-label">${outreachArea ? "AT RISK MEMBERS" : fringeArea ? "FRINGE REACH-OUT" : areaNames[view][1].toUpperCase()}</div><nav aria-label="Workspace">
  ${(outreachArea
    ? [
        ["queue", "users", "At Risk Members", active.length, "At Risk"],
@@ -288,14 +300,12 @@ function render() {
        ["all", "users", "All risk members", all.length, "All"],
        ["reporting", "calendar-days", "Reporting", store.data.weeks.length, "Reports"],
      ]
-   : [
-       [
-         view,
-         view === "cancellations" ? "flag" : "calendar-clock",
-         view === "cancellations" ? "Cancellations" : "Suspensions",
-         "",
-       ],
-     ]
+   : fringeArea
+     ? [
+         ["fringe", "heart-handshake", "Fringe Reach-out", fringeToContact(store.data, week) ?? "", "Fringe"],
+         ["fringe-reporting", "calendar-days", "Reporting", store.data.weeks.length, "Reports"],
+       ]
+     : [[view, areaNames[view][0], areaNames[view][1], ""]]
  )
    .map(
      ([id, ic, label, n, short = label]) =>
@@ -304,7 +314,7 @@ function render() {
    .join("")}</nav>
  <div class="sidebar-note"><div class="note-icon">${icon("heart-handshake")}</div><strong>A small check-in.<br>A stronger community.</strong><p>Reach out, leave context, and give the next team member a clear next step.</p></div>
  <div class="profile"><span class="avatar gold">${esc(initials(store.user.display_name))}</span><span><strong>${esc(store.user.display_name)}</strong><small>${store.demo ? "Sample workspace" : esc(store.user.role === "admin" ? "Administrator" : "Team member")}</small></span>${!store.demo ? `<button class="icon-button" id="signout" aria-label="Sign out">${icon("log-out")}</button>` : ""}</div></aside>
- <div class="main-shell"><header class="topbar"><div><span class="crumb">Urban Member Care</span><span class="slash">/</span> ${{ home: "Home", reporting: "Reporting", cancellations: "Cancellations", suspensions: "Suspensions" }[view] || "At Risk Members"}</div><div class="top-actions"><span class="connection ${store.demo ? "preview" : store.online ? "connected" : ""}"><span class="tiny-dot"></span>${store.demo ? "Preview mode" : store.online ? "Live updates on" : "Connected · auto-refresh"}</span><button class="icon-button" id="refresh" aria-label="Refresh workspace" title="Refresh">${icon("refresh-cw")}</button></div></header>
+ <div class="main-shell"><header class="topbar"><div><span class="crumb">Urban Member Care</span><span class="slash">/</span> ${{ home: "Home", reporting: "Reporting", cancellations: "Cancellations", suspensions: "Suspensions", fringe: "Fringe Reach-out", "fringe-reporting": "Fringe Reporting" }[view] || "At Risk Members"}</div><div class="top-actions"><span class="connection ${store.demo ? "preview" : store.online ? "connected" : ""}"><span class="tiny-dot"></span>${store.demo ? "Preview mode" : store.online ? "Live updates on" : "Connected · auto-refresh"}</span><button class="icon-button" id="refresh" aria-label="Refresh workspace" title="Refresh">${icon("refresh-cw")}</button></div></header>
  ${store.demo ? `<div class="demo-banner">${icon("flask-conical")}<span><strong>Sample workspace.</strong> Fictional members; notes save only in this browser.</span><button id="reset-demo">Reset preview</button><button id="go-login">Back to sign in</button></div>` : ""}
  <main><div class="page-heading"><div><div class="eyebrow">EVERY MEMBER MATTERS</div><h1>${view === "handled" ? "Handled & exempt" : view === "due" ? "Follow-ups due" : view === "all" ? "All risk members" : "Weekly outreach"}<span class="heading-dot">.</span></h1><p>${store.data.weeks.length ? "Attendance data as of " + fmt(asOf) + ". " : ""}${view === "handled" ? "Completed and paused cases, with context for the next team member." : "A clear next step for every member who needs a check-in."}</p></div><div class="heading-actions"><label class="week-control">${icon("calendar-days")}<span><small>REPORT WEEK</small><select id="week" aria-label="Report week">${[
    ...store.data.weeks,
@@ -362,6 +372,18 @@ function render() {
       fmt,
       icon,
     });
+  if (view === "fringe")
+    $("#app main").innerHTML = fringeView(store.data, week, fringeState, {
+      esc,
+      fmt,
+      icon,
+    });
+  if (view === "fringe-reporting")
+    $("#app main").innerHTML = fringeReportingView(store.data, week, {
+      esc,
+      fmt,
+      icon,
+    });
   if (view === "reporting")
     $("#app main").innerHTML = reportingView(store.data, week, {
       esc,
@@ -378,9 +400,9 @@ function render() {
       activeNav.getBoundingClientRect().left -
       nav.getBoundingClientRect().left -
       8;
-  if (focus === "search" && $("#search")) {
-    $("#search").focus();
-    $("#search").setSelectionRange(cursor, cursor);
+  if (cursor !== null && $("#" + focus)) {
+    $("#" + focus).focus();
+    $("#" + focus).setSelectionRange(cursor, cursor);
   }
 }
 function bind() {
@@ -403,13 +425,33 @@ function bind() {
     .forEach((b) => (b.onclick = () => openMember(b.dataset.member)));
   // Phone cards: a tap anywhere on the card opens the member.
   document.querySelectorAll(".queue-panel tbody tr").forEach((row) => {
-    const open = row.querySelector(".row-open");
+    const open = row.querySelector("button.row-open");
     if (open)
       row.onclick = (e) => {
         if (!e.target.closest("button, a, input, select") && matchMedia("(max-width: 760px)").matches)
-          openMember(open.dataset.member);
+          open.click();
       };
   });
+  document
+    .querySelectorAll("[data-fringe]")
+    .forEach((b) => (b.onclick = () => openFringe(b.dataset.fringe)));
+  document.querySelectorAll("[data-fringe-group]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        fringeState.group = b.dataset.fringeGroup;
+        render();
+      }),
+  );
+  if ($("#fringe-status"))
+    $("#fringe-status").onchange = (e) => {
+      fringeState.status = e.target.value;
+      render();
+    };
+  if ($("#fringe-search"))
+    $("#fringe-search").oninput = (e) => {
+      fringeState.search = e.target.value;
+      render();
+    };
   if ($("#attendance-stage"))
     $("#attendance-stage").onchange = (e) => {
       stage = e.target.value;
@@ -490,7 +532,7 @@ function openMember(id) {
   const dialog = $("#member-dialog");
   dialog.innerHTML = `<header class="drawer-top"><span>MEMBER CHECK-IN</span><button type="button" class="icon-button" id="close-member" aria-label="Close member">${icon("x")}</button></header><div class="drawer-body"><div class="member-intro"><span class="avatar large rose">${esc(initials(r.member.full_name))}</span><div><h2 id="member-title">${esc(r.member.full_name)}</h2><p>${esc(r.member.membership)}</p></div></div><div class="risk-callout"><span class="priority-pill ${r.priority.toLowerCase()}">${r.priority} risk</span>${stageBadge(r)}${liveBadge(r)}<strong>${esc(r.signal)}</strong><span>${r.s7} sessions in 7 days · ${r.s30} in 30 days</span><p class="risk-explanation">${esc(riskExplanation(r, store.data.weeks.find((w) => w.week === week)?.import_summary?.sequenceDates || []))}</p><div class="attendance-chart"><small>WEEKLY SNAPSHOTS · HOVER OR TAP A BAR</small>${spark(r)}</div></div>
  ${r.suppressed ? `<div class="exemption-notice">${icon("circle-check")}<span>Excluded from the action queue through the report dated <strong>${fmt(r.last.suppress_through)}</strong>. Choose “Reopen” to bring this case back.</span></div>` : ""}
- ${r.member.phone ? `<a class="phone-link" href="tel:${esc(r.member.phone.replace(/[^+0-9]/g, ""))}">${icon("phone")} ${esc(r.member.phone)}</a>` : ""}
+ ${clubworxButtons(r.member_id, icon)}${r.member.phone ? `<a class="phone-link" href="tel:${esc(r.member.phone.replace(/[^+0-9]/g, ""))}">${icon("phone")} ${esc(r.member.phone)}</a>` : ""}
  <div class="drawer-section-heading"><h3>Record your reach-out</h3><span>Week of ${fmt(week)}</span></div><form id="note-form"><label>What happened?<textarea id="note" required maxlength="4000" rows="4" placeholder="How is training going? What’s the barrier? Agree one next step…"></textarea></label><div class="form-two"><label>Outcome<select id="outcome"><option value="">Add note only</option><option value="contacted">Contacted</option><option value="booked">Session booked</option><option value="completed">Handled · exclude temporarily</option><option value="snoozed">Exempt / pause outreach</option><option value="open">Reopen · needs outreach</option></select></label><label>Assign to<select id="assignee"><option value="">Unassigned</option>${store.data.staff
    .filter((s) => s.active !== false)
    .map(
@@ -580,6 +622,83 @@ function openMember(id) {
         .querySelectorAll("input,select,textarea,button")
         .forEach((el) => (el.disabled = false));
       button.innerHTML = icon("check") + " Save check-in";
+      decorate();
+    }
+  };
+}
+function openFringe(id) {
+  const fringe = store.data.weeks.find((w) => w.week === week)?.import_summary
+    ?.fringe;
+  const m = fringe?.members.find((x) => x.member_id === id);
+  if (!m) return;
+  const c = fringeContacts(store.data.fringeOutreach, week).get(id) || {};
+  const admin = store.user.role === "admin";
+  const today = brisbaneToday();
+  selected = id;
+  const dialog = $("#member-dialog");
+  dialog.innerHTML = `<header class="drawer-top"><span>FRINGE REACH-OUT</span><button type="button" class="icon-button" id="close-member" aria-label="Close member">${icon("x")}</button></header><div class="drawer-body"><div class="member-intro"><span class="avatar large slate">${esc(initials(m.name))}</span><div><h2 id="member-title">${esc(m.name)}</h2><p>${esc(m.membership)}</p></div></div><div class="risk-callout"><span class="priority-pill watch">${esc(m.group)} · Fringe</span>${m.carried ? `<span class="carried-note">${esc(m.carried)} · still counted for this week</span>` : ""}<strong>${m.s7} of ${m.target} sessions this week</strong><span>Target ${esc(targetLabel(m.target))} · ${m.s30} sessions in 30 days${m.last ? " · last attended " + fmt(m.last.slice(0, 10)) : ""}</span></div>
+ ${clubworxButtons(m.member_id, icon)}${m.phone ? `<a class="phone-link" href="tel:${esc(m.phone.replace(/[^+0-9]/g, ""))}">${icon("phone")} ${esc(m.phone)}</a>` : ""}
+ <div class="drawer-section-heading"><h3>Record the reach-out</h3><span>Week of ${fmt(week)}</span></div><form id="fringe-form"><div class="form-two"><label>Reach-out method<select id="fringe-method"><option value="">Not contacted yet</option>${FRINGE_METHODS.map((x) => `<option ${c.method === x ? "selected" : ""}>${x}</option>`).join("")}</select></label><label>Date contacted<input type="date" id="fringe-date" max="${today}" value="${esc(c.contacted_on || "")}"></label></div><label>Outcome / notes<textarea id="fringe-notes" maxlength="4000" rows="4" placeholder="What did they say? Any barrier or next step…">${esc(c.notes || "")}</textarea></label><label class="check-row"><input type="checkbox" id="fringe-validated" ${c.validated ? "checked" : ""} ${admin ? "" : "disabled"}> Admin validation${admin ? "" : " <span class=\"optional\">(administrators only)</span>"}</label><p id="save-error" class="form-error" role="alert"></p><button class="button primary save" type="submit">${icon("check")} Save reach-out</button><p class="field-help">${store.demo ? "Preview: saved in this browser only." : c.updated_at ? "Last saved " + stamp(c.updated_at) + "." : "Saved with your staff identity and timestamp."}</p></form></div>`;
+  dialog.showModal();
+  decorate();
+  const close = () => {
+    if (busy) return;
+    dialog.close();
+    selected = null;
+    if (pendingRefresh) {
+      pendingRefresh = false;
+      refresh();
+    }
+  };
+  $("#close-member").onclick = close;
+  dialog.oncancel = (e) => {
+    e.preventDefault();
+    close();
+  };
+  dialog.onclick = (e) => {
+    if (e.target === dialog) close();
+  };
+  $("#fringe-method").onchange = () => {
+    if ($("#fringe-method").value && !$("#fringe-date").value)
+      $("#fringe-date").value = today;
+  };
+  $("#fringe-form").onsubmit = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    const entry = {
+      method: $("#fringe-method").value,
+      contacted_on: $("#fringe-date").value,
+      notes: $("#fringe-notes").value,
+      validated: $("#fringe-validated").checked,
+    };
+    if (entry.contacted_on && !entry.method) {
+      $("#save-error").textContent = "Choose how you reached out.";
+      return;
+    }
+    if (entry.method && !entry.contacted_on) {
+      $("#save-error").textContent = "Add the date you reached out.";
+      return;
+    }
+    busy = true;
+    const button = dialog.querySelector(".save");
+    button.disabled = true;
+    button.textContent = "Saving…";
+    $("#save-error").textContent = "";
+    try {
+      await store.saveFringe(week, id, entry);
+      busy = false;
+      dialog.close();
+      selected = null;
+      pendingRefresh = false;
+      lastSync = new Date();
+      render();
+      toast("Reach-out saved.");
+    } catch (err) {
+      busy = false;
+      $("#save-error").textContent =
+        err.message || "Could not save. Your note is still here; try again.";
+      button.disabled = false;
+      button.innerHTML = icon("check") + " Save reach-out";
       decorate();
     }
   };
