@@ -1,0 +1,233 @@
+import { addDays } from "./domain.js";
+// Entirely fictional people; production never falls back to these records after a read failure.
+const examples = [
+  [
+    "Adrian Parker",
+    "Accelerate",
+    "Red",
+    "Ghosting · 3 straight zero weeks",
+    0,
+    2,
+    [3, 2, 0, 0, 0],
+  ],
+  [
+    "Maya Ellis",
+    "Fun & Fitness",
+    "Red",
+    "Sharp stop · 3 → 0",
+    0,
+    9,
+    [3, 3, 2, 3, 0],
+  ],
+  [
+    "Leo Bennett",
+    "Accelerate",
+    "Red",
+    "Ghosting · 2 straight zero weeks",
+    0,
+    4,
+    [4, 3, 2, 0, 0],
+  ],
+  [
+    "Sophie West",
+    "Teens / U18",
+    "Yellow",
+    "Cooling · 4 → 1",
+    1,
+    8,
+    [4, 3, 3, 4, 1],
+  ],
+  [
+    "Noah Reed",
+    "Fun & Fitness",
+    "Red",
+    "Ghosting · 4 straight zero weeks",
+    0,
+    0,
+    [2, 0, 0, 0, 0],
+  ],
+  [
+    "Grace Turner",
+    "Accelerate",
+    "Yellow",
+    "New zero · 6 visits in 30d",
+    0,
+    6,
+    [2, 2, 2, 2, 0],
+  ],
+  [
+    "Oliver Banks",
+    "Accelerate",
+    "Watch",
+    "Below target · 2 of 4 sessions",
+    2,
+    10,
+    [2, 2, 3, 2, 2],
+  ],
+  [
+    "Isla Morgan",
+    "Fun & Fitness",
+    "Yellow",
+    "Cooling · 3 → 1",
+    1,
+    7,
+    [2, 3, 2, 3, 1],
+  ],
+  [
+    "Ethan Brooks",
+    "Teens / U18",
+    "Watch",
+    "Below target · 1 of 3 sessions",
+    1,
+    4,
+    [1, 1, 1, 1, 1],
+  ],
+  [
+    "Ava Collins",
+    "Accelerate",
+    "Red",
+    "Sharp stop · 4 → 0",
+    0,
+    11,
+    [4, 4, 3, 4, 0],
+  ],
+  [
+    "Lucas Hayes",
+    "Upfront",
+    "Yellow",
+    "Cooling · 4 → 2",
+    2,
+    9,
+    [4, 3, 4, 4, 2],
+  ],
+  [
+    "Zoe Fletcher",
+    "Fun & Fitness",
+    "Watch",
+    "Below target · 2 of 3 sessions",
+    2,
+    8,
+    [2, 2, 2, 2, 2],
+  ],
+  [
+    "Finn Walker",
+    "Accelerate",
+    "Red",
+    "Ghosting · 2 straight zero weeks",
+    0,
+    5,
+    [3, 2, 3, 0, 0],
+  ],
+  [
+    "Ruby Quinn",
+    "Teens / U18",
+    "Yellow",
+    "New zero · 5 visits in 30d",
+    0,
+    5,
+    [2, 1, 2, 1, 0],
+  ],
+];
+// Fictional Fringe list: trained this week but under their weekly target.
+const fringeExamples = [
+  ["Harper Quinn", "Accelerate WEEKLY 6 month membership", 4, 1, 6],
+  ["Ethan Cole", "Fun & Fitness (3 classes per week) Weekly T6", 3, 1, 5],
+  ["Isla Morgan", "Accelerate WEEKLY 6 month membership", 4, 2, 9],
+  ["Lucas Hart", "Short Term Membership Unlimited", 4, 3, 12],
+  ["Ruby Lane", "Teens Class (2x classes)", 2, 1, 6],
+  ["Max Rowe", "15-18 years (3x per week) 2023", 3, 2, 8],
+];
+function demoFringe(week) {
+  const members = fringeExamples.map(([name, membership, target, s7, s30], i) => ({
+    member_id: "demo-fringe-" + i,
+    name,
+    phone: "0400 000 00" + i,
+    membership,
+    group: /teen|15-18/i.test(membership) ? "U18" : "Adults",
+    target,
+    s7,
+    s30,
+    last: addDays(week, -1),
+  }));
+  return {
+    members,
+    review: [
+      {
+        member_id: "demo-fringe-review",
+        name: "Kai Brooks",
+        phone: null,
+        membership: "Teens Upfront Membership",
+        group: "U18",
+        target: null,
+        s7: 1,
+        s30: 4,
+        last: addDays(week, -3),
+      },
+    ],
+    sleepers: 9,
+    engaged: 14,
+    excluded: 2,
+    groups: {
+      Adults: { bands: [7, 2, 1, 3, 7], sleepers: 7, fringe: 4, engaged: 9, review: 0 },
+      U18: { bands: [2, 2, 1, 1, 4], sleepers: 2, fringe: 2, engaged: 5, review: 1 },
+    },
+  };
+}
+export function demoData() {
+  const weeks = ["2026-10-26", "2026-11-02", "2026-11-09"];
+  const members = examples.map((r, i) => ({
+    id: "demo-" + i,
+    full_name: r[0],
+    membership: r[1],
+    revision: 0,
+  }));
+  const risks = weeks.flatMap((week) =>
+    examples.map((r, i) => ({
+      week,
+      member_id: "demo-" + i,
+      priority: r[2],
+      signal: r[3],
+      s7: r[4],
+      s30: r[5],
+      sequence: r[6],
+      member: members[i],
+    })),
+  );
+  return {
+    weeks: weeks.map((week) => ({
+      week,
+      source_label: "Sample weekly snapshot",
+      import_summary: { asOf: week, fringe: demoFringe(week) },
+    })),
+    fringeOutreach: [],
+    members,
+    risks,
+    events: [
+      {
+        id: "sample-1",
+        sequence: 1,
+        member_id: "demo-1",
+        week: weeks[0],
+        status: "contacted",
+        body: "Spoke after class. Busy with shifts this week; check back on Thursday.",
+        follow_up_on: addDays(weeks[0], 3),
+        created_at: weeks[0] + "T01:20:00Z",
+        author: "Sam · Urban Team",
+      },
+      {
+        id: "sample-2",
+        sequence: 2,
+        member_id: "demo-2",
+        week: weeks[0],
+        status: "completed",
+        suppress_through: weeks[1],
+        body: "Reached out and agreed a return plan. Handled through next week; review afterwards.",
+        created_at: weeks[0] + "T02:15:00Z",
+        author: "Alex · Urban Team",
+      },
+    ],
+    staff: [
+      { id: "demo-coach", display_name: "Urban Team · Preview", role: "admin" },
+    ],
+  };
+}

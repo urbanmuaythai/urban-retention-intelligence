@@ -1,0 +1,456 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  buildOperations,
+  operationWeek,
+  fridayPeriod,
+  operationPeriods,
+  workspaceView,
+  cancellationPeriods,
+  upcomingCancellations,
+} from "../src/operations.js";
+import { fixture, filesFor } from "./csv-fixtures.mjs";
+import { readReports, convertReports } from "../src/csv-import.js";
+const week = "2026-10-26",
+  asOf = "2026-10-27";
+const policy = { version: 1, excludedMembershipIds: ["admin"] };
+
+test("weekly operations keep effective cancellations separate from notices and exclude rollovers/admin cleanup", () => {
+  const f = fixture();
+  const original = f.cancellations[0];
+  f.cancellations = [
+    // Last day 26 Oct = cancellation date 27 Oct (expiry + 1), inside this partial week.
+    {
+      ...original,
+      "Membership ID": "ended",
+      "Membership Expiry Date": "2026-10-26",
+    },
+    {
+      ...original,
+      "Membership ID": "old",
+      "Membership Expiry Date": "2026-10-25",
+    },
+    {
+      ...original,
+      "Membership ID": "future",
+      "Membership Expiry Date": "2026-10-29",
+    },
+    {
+      ...original,
+      "Membership ID": "notice",
+      "Membership Expiry Date": "2026-11-30",
+      "Cancellation Date": asOf,
+    },
+    {
+      ...original,
+      "Membership ID": "roll",
+      "Membership Expiry Date": "2026-10-26",
+      "Cancellation Reason": "Roll Over",
+    },
+    {
+      ...original,
+      "Membership ID": "admin",
+      "Membership Expiry Date": "2026-10-26",
+      "Cancellation Reason": "Bad debt",
+    },
+  ];
+  const reports = readReports(filesFor(f));
+  const operations = buildOperations(reports, week, asOf, policy);
+  assert.equal(
+    operations.periods.find((p) => p.start === "2026-10-23").cancellations
+      .length,
+    5,
+    "Only week-relevant records are saved",
+  );
+  const result = operationWeek({
+    week,
+    import_summary: { asOf, operations, retentionPolicy: policy },
+  });
+  assert.deepEqual(
+    result.cancellations.map((r) => r.membership_id),
+    ["ended", "old"],
+  );
+  assert.deepEqual(
+    result.recorded.map((r) => r.membership_id),
+    ["notice"],
+  );
+  assert.equal(result.excludedInWeek.length, 2);
+  assert.equal(result.policyApplied, true);
+});
+test("suspensions use overlap with this partial week and deduplicate matching source periods", () => {
+  const f = fixture(),
+    row = f.suspensions[0];
+  f.suspensions = [
+    {
+      ...row,
+      "Suspension Starts": "2026-10-20",
+      "Suspension Ends": "2026-10-26",
+    },
+    {
+      ...row,
+      "Suspension Starts": "2026-10-20",
+      "Suspension Ends": "2026-10-26",
+    },
+    {
+      ...row,
+      "Contact ID": "998",
+      "Suspension Starts": "2026-10-27",
+      "Suspension Ends": "",
+    },
+    {
+      ...row,
+      "Contact ID": "997",
+      "Suspension Starts": "2026-10-28",
+      "Suspension Ends": "",
+    },
+  ];
+  const reports = readReports(filesFor(f));
+  const operations = buildOperations(reports, week, asOf, policy);
+  const result = operationWeek({
+    week,
+    import_summary: { asOf, operations, retentionPolicy: policy },
+  });
+  assert.equal(result.suspensions.length, 2);
+  assert.equal(result.currentSuspensions.length, 1);
+});
+test("missing details and mismatched report cutoffs remain unavailable, not zero", () => {
+  assert.equal(operationWeek({ week, import_summary: {} }), null);
+  assert.equal(
+    operationWeek({
+      week,
+      import_summary: {
+        asOf,
+        operations: { version: 1, week, asOf: "2026-10-26" },
+      },
+    }),
+    null,
+  );
+});
+test("CSV conversions retain private weekly details and previously approved exclusion policy", () => {
+  const history = [
+    { week: "2026-10-19", import_summary: { retentionPolicy: policy } },
+  ];
+  const { payload } = convertReports(
+    readReports(filesFor(fixture(), asOf)),
+    week,
+    { Unlimited: 4 },
+    history,
+    asOf,
+  );
+  assert.equal(payload.import_summary.operations.week, week);
+  assert.deepEqual(payload.import_summary.retentionPolicy, policy);
+});
+
+test("Friday-Thursday date boundaries include Friday/Sunday and exclude the preceding Thursday", () => {
+  assert.deepEqual(fridayPeriod("2026-10-29"), {
+    start: "2026-10-23",
+    end: "2026-10-29",
+  });
+  assert.deepEqual(fridayPeriod("2026-10-30"), {
+    start: "2026-10-30",
+    end: "2026-11-05",
+  });
+  assert.deepEqual(fridayPeriod("2027-01-01"), {
+    start: "2027-01-01",
+    end: "2027-01-07",
+  });
+  const rows = fixture(),
+    r = rows.cancellations[0];
+  rows.cancellations = [
+    "2026-10-22",
+    "2026-10-23",
+    "2026-10-25",
+    "2026-10-29",
+    "2026-10-30",
+  ].map((d, i) => ({
+    ...r,
+    "Membership ID": "m" + i,
+    "Membership Expiry Date": d,
+  }));
+  const reports = readReports(filesFor(rows));
+  const make = (asOf) => ({
+    week,
+    import_summary: {
+      asOf,
+      retentionPolicy: policy,
+      operations: buildOperations(reports, week, asOf, policy),
+    },
+  });
+  // Cancellation date = expiry + 1: a Thursday expiry is cancelled on Friday (this week);
+  // a Thursday-of-this-week expiry belongs to next week.
+  assert.deepEqual(
+    operationWeek(make("2026-10-27")).cancellations.map((r) => r.end),
+    ["2026-10-22", "2026-10-23", "2026-10-25"],
+  );
+  assert.deepEqual(
+    operationWeek(make("2026-10-29")).cancellations.map((r) => r.end),
+    ["2026-10-22", "2026-10-23", "2026-10-25"],
+  );
+  const legacy = {
+    week,
+    import_summary: {
+      asOf,
+      operations: {
+        version: 1,
+        week,
+        asOf,
+        cancellations: [],
+        suspensions: [],
+      },
+    },
+  };
+  assert.equal(
+    operationWeek(legacy),
+    null,
+    "Monday-only details must not be relabelled as Friday coverage",
+  );
+});
+
+test("Friday rollover retains the completed period across Monday report keys without double counting", () => {
+  const reports = readReports(filesFor(fixture()));
+  const make = (key, cutoff, history = []) => ({
+    week: key,
+    import_summary: {
+      asOf: cutoff,
+      retentionPolicy: policy,
+      operations: buildOperations(reports, key, cutoff, policy, history),
+    },
+  });
+  const thursday = make(week, "2026-10-29");
+  const friday = make(week, "2026-10-30", [thursday]);
+  assert.equal(operationWeek(friday).start, "2026-10-30");
+  assert.equal(operationWeek(friday, "2026-10-23").asOf, "2026-10-29");
+  const monday = make("2026-11-02", "2026-11-02", [friday]);
+  const periods = operationPeriods([friday, monday]);
+  assert.equal(periods.filter((p) => p.start === "2026-10-23").length, 1);
+  assert.equal(
+    periods.find((p) => p.start === "2026-10-23").sourceAsOf,
+    "2026-11-02",
+  );
+  const older = make(week, "2026-10-27", [friday]);
+  assert.equal(
+    older.import_summary.operations.periods.some(
+      (p) => p.sourceAsOf > "2026-10-27",
+    ),
+    false,
+  );
+});
+
+test("a Friday export defaults to the completed Thursday period for the selected Monday report week", () => {
+  const reports = readReports(filesFor(fixture()));
+  const record = {
+    week,
+    import_summary: {
+      asOf: "2026-10-30",
+      retentionPolicy: policy,
+      operations: buildOperations(reports, week, "2026-10-30", policy),
+    },
+  };
+  const html = workspaceView(
+    { weeks: [record], risks: [], events: [] },
+    week,
+    "cancellations",
+    { esc: String, fmt: String, icon: () => "" },
+  );
+  assert.match(html, /<option value="2026-10-23" selected>/);
+  assert.match(html, /Fri 2026-10-23 – Thu 2026-10-29/);
+  assert.match(html, /Complete period/);
+});
+
+test("cancellation archive uses dated Friday weeks and separates scheduled ends from completed totals", () => {
+  const f = fixture(),
+    r = f.cancellations[0];
+  f.cancellations = [
+    ["previous", "2026-10-21", "Moved"],
+    ["current", "2026-10-22", "Moved"],
+    ["scheduled", "2026-10-29", "Moved"],
+    ["roll", "2026-11-04", "Roll Over"],
+    ["admin", "2026-11-05", "Bad debt"],
+  ].map(([id, end, reason]) => ({
+    ...r,
+    "Membership ID": id,
+    "Membership Expiry Date": end,
+    "Cancellation Reason": reason,
+  }));
+  const reports = readReports(filesFor(f));
+  const record = {
+    week,
+    import_summary: {
+      asOf,
+      retentionPolicy: policy,
+      operations: buildOperations(reports, week, asOf, policy),
+    },
+  };
+  const periods = cancellationPeriods([record]);
+  assert.equal(periods.length, 2);
+  assert.deepEqual(
+    periods
+      .find((p) => p.start === "2026-10-23")
+      .cancellations.map((r) => r.membership_id),
+    ["current"],
+  );
+  assert.deepEqual(
+    periods
+      .find((p) => p.start === "2026-10-16")
+      .cancellations.map((r) => r.membership_id),
+    ["previous"],
+  );
+  assert.deepEqual(
+    upcomingCancellations([record]).rows.map((r) => r.membership_id),
+    ["scheduled"],
+  );
+  const html = workspaceView(
+    { weeks: [record], risks: [], events: [] },
+    week,
+    "cancellations",
+    { esc: String, fmt: String, icon: () => "" },
+  );
+  assert.match(html, /Available when both periods are complete/);
+  assert.match(html, /cancellation-history/);
+  assert.match(html, /Upcoming cancellations/);
+  const next = {
+    week: "2026-11-02",
+    import_summary: {
+      asOf: "2026-11-02",
+      retentionPolicy: policy,
+      operations: buildOperations(reports, "2026-11-02", "2026-11-02", policy),
+    },
+  };
+  assert.equal(
+    cancellationPeriods([record, next]).filter((p) => p.start === "2026-10-23")
+      .length,
+    1,
+  );
+  assert.equal(
+    upcomingCancellations([record, next]).rows.length,
+    0,
+    "Old scheduled ends disappear when ended in latest export",
+  );
+  delete next.import_summary.operations.cancellationArchiveVersion;
+  assert.equal(
+    upcomingCancellations([record, next]),
+    null,
+    "Missing latest future details must not fall back to stale ones",
+  );
+});
+
+test("cancellations split into autopay (counted) and all, using the Cancellation Analysis categories", async () => {
+  const { categoriseCancellation } =
+    await import("../src/cancellation-category.js");
+  const cat = (m) => categoriseCancellation(m);
+  assert.deepEqual(cat("Accelerate WEEKLY 6 month membership"), {
+    counted: true,
+    group: "Adults",
+    type: "Adults",
+  });
+  assert.deepEqual(cat("Teens Class (2x per week)"), {
+    counted: true,
+    group: "Teens",
+    type: "Teens",
+  });
+  assert.deepEqual(cat("15-18 years (3x per week)"), {
+    counted: true,
+    group: "Teens",
+    type: "Teens",
+  });
+  assert.deepEqual(cat("Kids Class Unlimited"), {
+    counted: true,
+    group: "Kids",
+    type: "Kids",
+  });
+  assert.equal(cat("Kickstarter Program Upfront").type, "Kickstarter");
+  assert.equal(cat("Kickstarter Program Weekly").type, "Kickstarter");
+  assert.equal(cat("15 - 18 years Kickstarter Program").type, "Kickstarter");
+  assert.equal(cat("Teens 1 Week Trial").type, "Trial");
+  assert.equal(cat("Short Term Membership Unlimited").type, "Short Term");
+  assert.equal(cat("Upfront Adult Membership Special").type, "Upfront");
+  assert.equal(cat("10 Class Pass").type, "Casual / class pass");
+  assert.equal(cat("Kickstarter Program Upfront").counted, false);
+
+  const f = fixture(),
+    r = f.cancellations[0];
+  f.cancellations = [
+    ["a1", "Accelerate WEEKLY 6 month membership"],
+    ["k1", "Kids Class Unlimited"],
+    ["ks", "Kickstarter Program Weekly"],
+    ["st", "Short Term Membership Unlimited"],
+  ].map(([id, m]) => ({
+    ...r,
+    "Membership ID": id,
+    "Membership Name": m,
+    "Membership Expiry Date": "2026-10-24",
+  }));
+  const record = {
+    week,
+    import_summary: {
+      asOf,
+      retentionPolicy: policy,
+      operations: buildOperations(readReports(filesFor(f)), week, asOf, policy),
+    },
+  };
+  const ops = operationWeek(record);
+  assert.deepEqual(ops.cancellations.map((x) => x.membership_id).sort(), [
+    "a1",
+    "k1",
+    "ks",
+    "st",
+  ]);
+  assert.deepEqual(ops.autopay.map((x) => x.membership_id).sort(), [
+    "a1",
+    "k1",
+  ]);
+  assert.equal(
+    ops.cancellations.find((x) => x.membership_id === "a1").cancelled,
+    "2026-10-25",
+  );
+  const html = workspaceView(
+    { weeks: [record], risks: [], events: [] },
+    week,
+    "cancellations",
+    {
+      esc: String,
+      fmt: String,
+      icon: () => "",
+    },
+  );
+  assert.match(html, /Autopay cancellations/);
+  assert.match(html, /All cancellations/);
+  assert.match(html, /Not counted · Kickstarter/);
+});
+
+test("a cancelled plan whose member holds another active plan is a membership change, not counted", () => {
+  const f = fixture(),
+    r = f.cancellations[0];
+  f.cancellations = [
+    ["left", "999", "Accelerate WEEKLY 6 month membership", "Moving"],
+    ["moved", "123", "15-18 years (3x per week)", "Changing plans"],
+    ["typed", "777", "15-18 years (Unlimited)", "Downgrade"],
+  ].map(([id, contact, m, reason]) => ({
+    ...r,
+    "Contact ID": contact,
+    "Membership ID": id,
+    "Membership Name": m,
+    "Membership Expiry Date": "2026-10-24",
+    "Cancellation Reason": reason,
+  }));
+  const record = {
+    week,
+    import_summary: {
+      asOf,
+      retentionPolicy: policy,
+      operations: buildOperations(readReports(filesFor(f)), week, asOf, policy),
+    },
+  };
+  const ops = operationWeek(record);
+  assert.deepEqual(
+    ops.autopay.map((x) => x.membership_id),
+    ["left"],
+  );
+  assert.deepEqual(
+    ops.cancellations
+      .filter((x) => x.type === "Membership change")
+      .map((x) => x.membership_id)
+      .sort(),
+    ["moved", "typed"],
+  );
+});

@@ -1,0 +1,17 @@
+{
+  "id": "./",
+  "name": "Urban Muaythai Member Care",
+  "short_name": "UMT Member Care",
+  "description": "Urban Muaythai staff portal for at-risk members, cancellations and suspensions.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#101326",
+  "theme_color": "#101326",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
